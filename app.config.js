@@ -1,4 +1,5 @@
-import type { ConfigContext, ExpoConfig } from 'expo/config';
+// JavaScript puro de propósito: o EAS CLI lê este arquivo com o próprio leitor, que em Node 20
+// não entende TypeScript (vem com o TypeScript 7, sem a função de conversão que ele usa).
 
 /**
  * Uma configuração, três variantes (o `APP_VARIANT` vem do perfil do `eas.json`):
@@ -6,12 +7,14 @@ import type { ConfigContext, ExpoConfig } from 'expo/config';
  * - preview: APK/ad hoc do piloto, contra a homologação com HTTPS;
  * - production: lojas.
  * Cada variante tem identificador próprio para as três conviverem no mesmo aparelho.
+ * @typedef {'development' | 'preview' | 'production'} Variante
  */
-type Variante = 'development' | 'preview' | 'production';
 
-const VARIANTES: readonly Variante[] = ['development', 'preview', 'production'];
+/** @type {readonly Variante[]} */
+const VARIANTES = ['development', 'preview', 'production'];
 
-function varianteAtual(): Variante {
+/** @returns {Variante} */
+function varianteAtual() {
   const valor = process.env.APP_VARIANT;
   return VARIANTES.find((variante) => variante === valor) ?? 'development';
 }
@@ -21,14 +24,18 @@ const IDENTIFICADOR = 'tec.zanart.motodelivery';
 const NOME = 'Moto Delivery';
 const PRETO = '#0A0A0A';
 
-const SUFIXOS: Readonly<Record<Variante, { id: string; nome: string }>> = {
+/** @type {Readonly<Record<Variante, { id: string; nome: string }>>} */
+const SUFIXOS = {
   development: { id: '.dev', nome: ' (dev)' },
   preview: { id: '.preview', nome: ' (teste)' },
   production: { id: '', nome: '' },
 };
 
-/** Só o build de desenvolvimento fala HTTP com `192.168.x.x`; os demais usam HTTPS. */
-function redeLocal(variante: Variante): { android: object; ios: Record<string, unknown> } {
+/**
+ * Só o build de desenvolvimento fala HTTP com `192.168.x.x`; os demais usam HTTPS.
+ * @param {Variante} variante
+ */
+function redeLocal(variante) {
   if (variante !== 'development') return { android: {}, ios: {} };
   return {
     android: { usesCleartextTraffic: true },
@@ -39,13 +46,19 @@ function redeLocal(variante: Variante): { android: object; ios: Record<string, u
   };
 }
 
-export default ({ config }: ConfigContext): ExpoConfig => {
+/**
+ * @param {import('expo/config').ConfigContext} contexto
+ * @returns {import('expo/config').ExpoConfig}
+ */
+module.exports = ({ config }) => {
   const variante = varianteAtual();
   const sufixo = SUFIXOS[variante];
   const rede = redeLocal(variante);
   return {
     ...config,
     name: `${NOME}${sufixo.nome}`,
+    /** Conta da Expo dona do projeto no EAS. */
+    owner: 'arthurreiss-zanart',
     slug: 'moto-delivery-mobile',
     scheme: 'motodelivery',
     /** Vai no X-App-Version: abaixo do APP_VERSAO_MINIMA da API (hoje 1.0.0), tudo dá 426. */
@@ -81,6 +94,7 @@ export default ({ config }: ConfigContext): ExpoConfig => {
       ['expo-build-properties', { android: rede.android }],
     ],
     experiments: { typedRoutes: true },
-    extra: { variante },
+    /** O EAS não grava em configuração dinâmica: o id do projeto fica aqui. */
+    extra: { variante, eas: { projectId: '95136fd4-f517-4db2-94a6-f3fa78585879' } },
   };
 };
