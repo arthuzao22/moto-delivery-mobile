@@ -1,0 +1,69 @@
+import '../../global.css';
+import {
+  Inter_400Regular,
+  Inter_500Medium,
+  Inter_600SemiBold,
+  Inter_700Bold,
+} from '@expo-google-fonts/inter';
+import { JetBrainsMono_400Regular } from '@expo-google-fonts/jetbrains-mono';
+import { PortalHost } from '@rn-primitives/portal';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { useFonts } from 'expo-font';
+import { Stack, ThemeProvider } from 'expo-router';
+import * as SplashScreen from 'expo-splash-screen';
+import { StatusBar } from 'expo-status-bar';
+import { useEffect, type ReactNode } from 'react';
+import { StyleSheet } from 'react-native';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { ProvedorDeTema, useTema } from '@/lib/provedor-de-tema';
+import { TEMA_DA_NAVEGACAO } from '@/lib/tema';
+
+void SplashScreen.preventAutoHideAsync();
+
+const clienteDeConsultas = new QueryClient({ defaultOptions: { queries: { retry: 1 } } });
+
+const estilos = StyleSheet.create({ raiz: { flex: 1 } });
+
+/**
+ * Base de execução (documento 03 §1): fontes e tema carregados antes de esconder a splash,
+ * status bar sempre clara sobre a faixa escura, e os provedores que todas as telas usam.
+ */
+export default function Layout(): ReactNode {
+  return (
+    <GestureHandlerRootView style={estilos.raiz}>
+      <SafeAreaProvider>
+        <QueryClientProvider client={clienteDeConsultas}>
+          <ProvedorDeTema>
+            <Casca />
+          </ProvedorDeTema>
+        </QueryClientProvider>
+      </SafeAreaProvider>
+    </GestureHandlerRootView>
+  );
+}
+
+function Casca(): ReactNode {
+  const { esquema, carregado } = useTema();
+  const [fontesProntas] = useFonts({
+    Inter_400Regular,
+    Inter_500Medium,
+    Inter_600SemiBold,
+    Inter_700Bold,
+    JetBrainsMono_400Regular,
+  });
+  const pronto = fontesProntas && carregado;
+
+  useEffect(() => {
+    if (pronto) void SplashScreen.hideAsync();
+  }, [pronto]);
+
+  if (!pronto) return null;
+  return (
+    <ThemeProvider value={TEMA_DA_NAVEGACAO[esquema]}>
+      <StatusBar style="light" />
+      <Stack screenOptions={{ headerShown: false }} />
+      <PortalHost />
+    </ThemeProvider>
+  );
+}
