@@ -87,6 +87,7 @@ module.exports = ({ config }) => {
       'expo-router',
       'expo-font',
       'expo-secure-store',
+      'expo-notifications',
       [
         'expo-splash-screen',
         { image: './assets/splash-icon.png', imageWidth: 160, backgroundColor: PRETO, resizeMode: 'contain' },

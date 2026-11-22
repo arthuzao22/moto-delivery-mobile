@@ -1,5 +1,10 @@
 import * as Application from 'expo-application';
 import createClient, { type Middleware } from 'openapi-fetch';
+import { guardarTokens, lerTokens } from '@/sessao/armazem';
+import { avisarSessaoPerdida } from '@/sessao/aviso-de-sessao';
+import { criarFetchAutenticado } from '@/sessao/fetch-autenticado';
+import { Renovador } from '@/sessao/renovador';
+import { ehTokens } from '@/sessao/tokens';
 import { baseDaApi } from './configuracao';
 import type { paths } from './schema';
 
@@ -19,6 +24,35 @@ const versao: Middleware = {
   },
 };
 
-/** Cliente único da API, tipado pelo contrato. O Bearer e o renovador entram na M1. */
-export const api = createClient<paths>({ baseUrl: BASE_DA_API ?? '' });
+/** `POST /auth/app/refresh` com o fetch comum: passar pelo cliente faria a renovação chamar a si mesma. */
+async function pedirRenovacao(
+  refreshToken: string,
+): Promise<{ status: number; tokens: ReturnType<typeof tokensDe> }> {
+  const resposta = await fetch(`${BASE_DA_API ?? ''}/auth/app/refresh`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'X-App-Version': VERSAO_DO_APP },
+    body: JSON.stringify({ refreshToken }),
+  });
+  const corpo: unknown = resposta.ok ? await resposta.json() : null;
+  return { status: resposta.status, tokens: tokensDe(corpo) };
+}
+
+function tokensDe(corpo: unknown): Parameters<typeof guardarTokens>[0] | null {
+  if (typeof corpo !== 'object' || corpo === null || !('dados' in corpo)) return null;
+  return ehTokens(corpo.dados) ? corpo.dados : null;
+}
+
+export const renovador = new Renovador({ ler: lerTokens, guardar: guardarTokens, pedir: pedirRenovacao });
+
+/** Cliente único da API, tipado pelo contrato: Bearer, renovação única e repetição no 401. */
+export const api = createClient<paths>({
+  baseUrl: BASE_DA_API ?? '',
+  fetch: criarFetchAutenticado({
+    fetch: async (requisicao) => fetch(requisicao),
+    ler: lerTokens,
+    renovar: async () => renovador.renovar(),
+    aoPerderSessao: avisarSessaoPerdida,
+    agora: () => new Date(),
+  }),
+});
 api.use(versao);

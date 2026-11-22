@@ -18,6 +18,7 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { ProvedorDeTema, useTema } from '@/lib/provedor-de-tema';
 import { TEMA_DA_NAVEGACAO } from '@/lib/tema';
+import { ProvedorDeSessao, useSessao } from '@/sessao/provedor-de-sessao';
 
 void SplashScreen.preventAutoHideAsync();
 
@@ -35,7 +36,9 @@ export default function Layout(): ReactNode {
       <SafeAreaProvider>
         <QueryClientProvider client={clienteDeConsultas}>
           <ProvedorDeTema>
-            <Casca />
+            <ProvedorDeSessao>
+              <Casca />
+            </ProvedorDeSessao>
           </ProvedorDeTema>
         </QueryClientProvider>
       </SafeAreaProvider>
@@ -45,6 +48,7 @@ export default function Layout(): ReactNode {
 
 function Casca(): ReactNode {
   const { esquema, carregado } = useTema();
+  const { situacao } = useSessao();
   const [fontesProntas, erroDasFontes] = useFonts({
     Inter_400Regular,
     Inter_500Medium,
@@ -53,7 +57,8 @@ function Casca(): ReactNode {
     JetBrainsMono_400Regular,
   });
   /** Fonte que falhou não segura a splash: o app abre com a fonte do sistema. */
-  const pronto = (fontesProntas || erroDasFontes !== null) && carregado;
+  const pronto = (fontesProntas || erroDasFontes !== null) && carregado && situacao !== 'carregando';
+  const logado = situacao === 'ativa';
 
   useEffect(() => {
     if (pronto) void SplashScreen.hideAsync();
@@ -63,7 +68,15 @@ function Casca(): ReactNode {
   return (
     <ThemeProvider value={TEMA_DA_NAVEGACAO[esquema]}>
       <StatusBar style="light" />
-      <Stack screenOptions={{ headerShown: false }} />
+      <Stack screenOptions={{ headerShown: false }}>
+        {/* Sem sessão, só o login existe; com sessão, o login some e o app abre no Início. */}
+        <Stack.Protected guard={logado}>
+          <Stack.Screen name="(app)" />
+        </Stack.Protected>
+        <Stack.Protected guard={!logado}>
+          <Stack.Screen name="login" />
+        </Stack.Protected>
+      </Stack>
       <PortalHost />
     </ThemeProvider>
   );

@@ -1,24 +1,32 @@
-import type { ReactNode } from 'react';
+import { useState, type ReactNode } from 'react';
 import { ScrollView, View } from 'react-native';
 import { BASE_DA_API, VERSAO_DO_APP } from '@/api/cliente';
 import { ehErroDaApi } from '@/api/erro-da-api';
+import { useEu } from '@/api/eu';
 import { useSaude } from '@/api/saude';
 import { BarraDeAcao } from '@/components/app/barra-de-acao';
+import { CartaoDeNotificacoes } from '@/components/app/cartao-de-notificacoes';
 import { FaixaDoTopo } from '@/components/app/faixa-do-topo';
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
+import { useSessao } from '@/sessao/provedor-de-sessao';
 
 /**
- * Casca da M0 (documento 04): prova que o app abre nos dois temas e fala com a API. Na M2, o
- * Início passa a ser guiado pelo `GET /app/inicio` (documento 02 §2).
+ * Início da M1: quem está logado e a conexão com a API. Na M2, passa a ser guiado pelo
+ * `GET /app/inicio` (documento 02 §2).
  */
 export default function Inicio(): ReactNode {
-  const saude = useSaude();
+  const { sair } = useSessao();
+  const [saindo, setSaindo] = useState(false);
   return (
     <View className="flex-1 bg-background">
       <FaixaDoTopo titulo="Moto Delivery" />
       <ScrollView contentContainerClassName="gap-4 px-4 py-6">
-        <Text variante="eyebrow">Conexão com a API</Text>
+        <Saudacao />
+        <CartaoDeNotificacoes />
+        <Text variante="eyebrow" className="mt-2">
+          Conexão com a API
+        </Text>
         <Situacao />
         <View className="gap-1 rounded-2xl border border-border bg-card p-4">
           <Text variante="secundario">Endereço</Text>
@@ -30,10 +38,34 @@ export default function Inicio(): ReactNode {
         </View>
       </ScrollView>
       <BarraDeAcao>
-        <Button disabled={BASE_DA_API === null || saude.isFetching} onPress={() => void saude.refetch()}>
-          <Text>{saude.isFetching ? 'Consultando…' : 'Testar de novo'}</Text>
+        <Button
+          variante="contorno"
+          disabled={saindo}
+          onPress={() => {
+            setSaindo(true);
+            void sair();
+          }}
+        >
+          <Text>{saindo ? 'Saindo…' : 'Sair'}</Text>
         </Button>
       </BarraDeAcao>
+    </View>
+  );
+}
+
+function Saudacao(): ReactNode {
+  const eu = useEu();
+  if (eu.isPending) return <Text variante="titulo">Olá!</Text>;
+  if (eu.isError) {
+    const mensagem = ehErroDaApi(eu.error) ? eu.error.message : 'Não deu para carregar seus dados.';
+    return <Aviso titulo="Olá!">{mensagem}</Aviso>;
+  }
+  const { usuario, organizacaoAtiva } = eu.data;
+  const primeiroNome = usuario.nome.split(' ')[0] ?? usuario.nome;
+  return (
+    <View className="gap-1">
+      <Text variante="titulo">{`Olá, ${primeiroNome}!`}</Text>
+      <Text variante="secundario">{organizacaoAtiva?.nome ?? 'Sem organização ativa'}</Text>
     </View>
   );
 }
@@ -64,7 +96,7 @@ function Situacao(): ReactNode {
 function Aviso({ titulo, children }: { readonly titulo: string; readonly children: ReactNode }): ReactNode {
   return (
     <View className="gap-1 rounded-2xl border border-border bg-card p-4">
-      <Text variante="titulo">{titulo}</Text>
+      <Text variante="tituloDeCard">{titulo}</Text>
       <Text variante="secundario">{children}</Text>
     </View>
   );

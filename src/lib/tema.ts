@@ -41,3 +41,6 @@ export const TEMA_DA_NAVEGACAO = {
   dark: temaDaNavegacao(DarkTheme, ESCURO),
   light: temaDaNavegacao(DefaultTheme, CLARO),
 } as const;
+
+/** Texto de exemplo dos campos: o `muted-foreground` do escuro, legível nos dois temas. */
+export const COR_DO_PLACEHOLDER = 'hsl(0, 0%, 53.3%)';
