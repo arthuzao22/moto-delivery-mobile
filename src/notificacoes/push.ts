@@ -1,30 +1,39 @@
 import Constants, { ExecutionEnvironment } from 'expo-constants';
 import * as Device from 'expo-device';
-import * as Notifications from 'expo-notifications';
+// Só o tipo: o módulo em si é carregado sob demanda, fora do Expo Go.
+import type * as ExpoNotifications from 'expo-notifications';
 import { Platform } from 'react-native';
 import { api, VERSAO_DO_APP } from '@/api/cliente';
 import { dadosDe } from '@/api/executar';
 import { guardarTokenDePush } from '@/sessao/armazem';
 
-/**
- * Canal dos avisos sem som (A5 na API: `rota.transferida` e as decisões sobre a entrega).
- * O canal `ofertas` entra na M3 junto com o `oferta.wav`: no Android, o som de um canal não muda
- * depois de criado, então criá-lo agora sem o som prenderia o canal ao som padrão.
- */
-export async function criarCanais(): Promise<void> {
-  if (Platform.OS !== 'android') return;
-  await Notifications.setNotificationChannelAsync('avisos', {
-    name: 'Avisos da entrega',
-    description: 'Decisões da central e do restaurante sobre as suas entregas.',
-    importance: Notifications.AndroidImportance.HIGH,
-    sound: null,
-    vibrationPattern: [0, 250],
-  });
-}
-
 /** Push remoto não existe no Expo Go (Android, desde o SDK 53) nem em emulador. */
 export function pushDisponivel(): boolean {
   return Device.isDevice && Constants.executionEnvironment !== ExecutionEnvironment.StoreClient;
+}
+
+/**
+ * O módulo só é carregado onde o push existe: no Expo Go, só importá-lo já mostra os avisos de
+ * "não suportado". Fora do build de desenvolvimento, devolve null.
+ */
+export async function moduloDeNotificacoes(): Promise<typeof ExpoNotifications | null> {
+  return pushDisponivel() ? import('expo-notifications') : null;
+}
+
+/**
+ * Canal dos avisos sem som (A5 na API: rota.transferida e as decisões sobre a entrega).
+ * O canal "ofertas" entra junto com o oferta.wav: no Android, o som de um canal não muda depois de
+ * criado, então criá-lo sem o som prenderia a oferta ao som padrão.
+ */
+async function criarCanais(notificacoes: typeof ExpoNotifications): Promise<void> {
+  if (Platform.OS !== 'android') return;
+  await notificacoes.setNotificationChannelAsync('avisos', {
+    name: 'Avisos da entrega',
+    description: 'Decisões da central e do restaurante sobre as suas entregas.',
+    importance: notificacoes.AndroidImportance.HIGH,
+    sound: null,
+    vibrationPattern: [0, 250],
+  });
 }
 
 export type SituacaoDoPush = 'indisponivel' | 'sem_permissao' | 'registrado';
@@ -39,16 +48,16 @@ function projetoNoEas(): string | null {
 
 /**
  * A cada abertura (o Expo pode trocar o token): cria os canais, confere a permissão e registra o
- * token na API (`POST /app/dispositivo`). Não pede permissão: quem pede é a tela que explica o motivo.
+ * token na API (POST /app/dispositivo). Não pede permissão: quem pede é a tela que explica o motivo.
  */
 export async function registrarAparelho(): Promise<SituacaoDoPush> {
-  if (!pushDisponivel()) return 'indisponivel';
-  await criarCanais();
-  const { granted } = await Notifications.getPermissionsAsync();
-  if (!granted) return 'sem_permissao';
+  const notificacoes = await moduloDeNotificacoes();
   const projectId = projetoNoEas();
-  if (projectId === null) return 'indisponivel';
-  const { data: expoToken } = await Notifications.getExpoPushTokenAsync({ projectId });
+  if (notificacoes === null || projectId === null) return 'indisponivel';
+  await criarCanais(notificacoes);
+  const { granted } = await notificacoes.getPermissionsAsync();
+  if (!granted) return 'sem_permissao';
+  const { data: expoToken } = await notificacoes.getExpoPushTokenAsync({ projectId });
   const plataforma = Platform.OS === 'ios' ? 'ios' : 'android';
   await dadosDe(
     api.POST('/app/dispositivo', {
@@ -62,6 +71,8 @@ export async function registrarAparelho(): Promise<SituacaoDoPush> {
 
 /** O pedido do sistema, depois que a tela explicou "para você receber as ofertas" (documento 02 §6). */
 export async function pedirPermissao(): Promise<boolean> {
-  const { granted } = await Notifications.requestPermissionsAsync();
+  const notificacoes = await moduloDeNotificacoes();
+  if (notificacoes === null) return false;
+  const { granted } = await notificacoes.requestPermissionsAsync();
   return granted;
 }

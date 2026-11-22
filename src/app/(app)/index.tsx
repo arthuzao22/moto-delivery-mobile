@@ -1,4 +1,5 @@
 import { useEffect, type ReactNode } from 'react';
+import { useRouter } from 'expo-router';
 import { Linking, ScrollView, View } from 'react-native';
 import { ehErroDaApi } from '@/api/erro-da-api';
 import { useEu } from '@/api/eu';
@@ -111,7 +112,13 @@ function Conteudo({
     estado !== 'sem_turno' && !segundoPlanoDisponivel()
       ? ' No Expo Go, o GPS só funciona com o app aberto.'
       : '';
-  return <Cartao titulo={titulo} texto={`${texto}${aviso}`} />;
+  const oferta = consulta.data?.ofertas[0];
+  return (
+    <>
+      {oferta === undefined ? null : <OfertaAberta id={oferta.id} paradas={oferta.paradas.length} />}
+      <Cartao titulo={titulo} texto={`${texto}${aviso}`} />
+    </>
+  );
 }
 
 function Acoes({ estado }: { readonly estado: Estado }): ReactNode {
@@ -142,6 +149,12 @@ function Acoes({ estado }: { readonly estado: Estado }): ReactNode {
           <Text>Voltar a receber ofertas</Text>
         </Button>
       ) : null}
+      {estado === 'em_rota' ? (
+        // Até a aba Perfil existir (documento 02 §1), o sair fica aqui também.
+        <Button variante="fantasma" disabled={ocupado} onPress={() => void sair()}>
+          <Text>Sair</Text>
+        </Button>
+      ) : null}
       {estado === 'disponivel' || estado === 'pausa' ? (
         <DeslizarParaConfirmar
           texto="Deslize para encerrar o turno"
@@ -150,6 +163,22 @@ function Acoes({ estado }: { readonly estado: Estado }): ReactNode {
         />
       ) : null}
     </BarraDeAcao>
+  );
+}
+
+/** A oferta aberta no Início: o motoboy pode ter perdido o evento ou voltado pelo push. */
+function OfertaAberta({ id, paradas }: { readonly id: string; readonly paradas: number }): ReactNode {
+  const router = useRouter();
+  return (
+    <View className="gap-3 rounded-2xl border border-primary bg-card p-4">
+      <Text variante="eyebrow" className="text-brand-text">
+        Nova rota
+      </Text>
+      <Text variante="titulo">{`${paradas} ${paradas === 1 ? 'parada' : 'paradas'} esperando você`}</Text>
+      <Button onPress={() => router.push({ pathname: '/oferta/[id]', params: { id } })}>
+        <Text>Ver oferta</Text>
+      </Button>
+    </View>
   );
 }
 

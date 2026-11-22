@@ -1,0 +1,24 @@
+import { Stack } from 'expo-router';
+import type { ReactNode } from 'react';
+import { useInicio } from '@/api/turno';
+import { useAberturaPeloPush } from '@/notificacoes/use-abertura-pelo-push';
+import { useTempoReal } from '@/tempo-real/use-tempo-real';
+
+/**
+ * Telas de quem está logado. O socket fica ligado enquanto o turno estiver aberto; a oferta abre em
+ * tela cheia, sem o gesto de voltar do iOS (documento 05 §4.6), para não ser descartada sem querer.
+ */
+export default function LayoutDoApp(): ReactNode {
+  const inicio = useInicio();
+  useTempoReal(inicio.data?.turno?.status === 'aberto');
+  useAberturaPeloPush();
+  return (
+    <Stack screenOptions={{ headerShown: false }}>
+      <Stack.Screen name="index" />
+      <Stack.Screen
+        name="oferta/[id]"
+        options={{ presentation: 'fullScreenModal', animation: 'slide_from_bottom', gestureEnabled: false }}
+      />
+    </Stack>
+  );
+}
