@@ -12,6 +12,7 @@ import {
 import { BarraDeAcao } from '@/components/app/barra-de-acao';
 import { CartaoDeNotificacoes } from '@/components/app/cartao-de-notificacoes';
 import { DeslizarParaConfirmar } from '@/components/app/deslizar-para-confirmar';
+import { TelaDaRota } from '@/components/app/rota/tela-da-rota';
 import { FaixaDoTopo } from '@/components/app/faixa-do-topo';
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
@@ -47,6 +48,15 @@ export default function Inicio(): ReactNode {
   const inicio = useInicio();
   const estado = inicio.data === undefined ? null : estadoDo(inicio.data);
   useGpsDoTurnoAberto(estado !== null && estado !== 'sem_turno');
+  const rota = inicio.data?.rotaAtiva ?? null;
+  if (estado === 'em_rota' && rota !== null) {
+    return (
+      <View className="flex-1 bg-background">
+        <FaixaDoTopo titulo="Moto Delivery" />
+        <TelaDaRota rota={rota} />
+      </View>
+    );
+  }
   return (
     <View className="flex-1 bg-background">
       <FaixaDoTopo titulo="Moto Delivery" />
