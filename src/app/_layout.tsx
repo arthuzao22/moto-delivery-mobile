@@ -45,14 +45,15 @@ export default function Layout(): ReactNode {
 
 function Casca(): ReactNode {
   const { esquema, carregado } = useTema();
-  const [fontesProntas] = useFonts({
+  const [fontesProntas, erroDasFontes] = useFonts({
     Inter_400Regular,
     Inter_500Medium,
     Inter_600SemiBold,
     Inter_700Bold,
     JetBrainsMono_400Regular,
   });
-  const pronto = fontesProntas && carregado;
+  /** Fonte que falhou não segura a splash: o app abre com a fonte do sistema. */
+  const pronto = (fontesProntas || erroDasFontes !== null) && carregado;
 
   useEffect(() => {
     if (pronto) void SplashScreen.hideAsync();

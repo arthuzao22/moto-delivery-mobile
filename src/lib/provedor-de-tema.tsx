@@ -26,11 +26,15 @@ export function ProvedorDeTema({ children }: { readonly children: ReactNode }): 
   const [carregado, setCarregado] = useState(false);
 
   useEffect(() => {
+    /** Falhou ao ler ou aplicar? Segue no escuro: a splash nunca pode ficar presa esperando o tema. */
     const ler = async (): Promise<void> => {
-      const guardada = lerPreferencia(await AsyncStorage.getItem(CHAVE_DA_PREFERENCIA).catch(() => null));
-      setColorScheme(PARA_O_NATIVEWIND[guardada]);
-      setPreferencia(guardada);
-      setCarregado(true);
+      try {
+        const guardada = lerPreferencia(await AsyncStorage.getItem(CHAVE_DA_PREFERENCIA).catch(() => null));
+        setPreferencia(guardada);
+        setColorScheme(PARA_O_NATIVEWIND[guardada]);
+      } finally {
+        setCarregado(true);
+      }
     };
     void ler();
   }, [setColorScheme]);
