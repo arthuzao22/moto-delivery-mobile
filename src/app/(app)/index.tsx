@@ -1,103 +1,187 @@
-import { useState, type ReactNode } from 'react';
-import { ScrollView, View } from 'react-native';
-import { BASE_DA_API, VERSAO_DO_APP } from '@/api/cliente';
+import { useEffect, type ReactNode } from 'react';
+import { Linking, ScrollView, View } from 'react-native';
 import { ehErroDaApi } from '@/api/erro-da-api';
 import { useEu } from '@/api/eu';
-import { useSaude } from '@/api/saude';
+import {
+  PermissaoDeLocalizacao,
+  useAcoesDoTurno,
+  useInicio,
+  type Inicio as DadosDoInicio,
+} from '@/api/turno';
 import { BarraDeAcao } from '@/components/app/barra-de-acao';
 import { CartaoDeNotificacoes } from '@/components/app/cartao-de-notificacoes';
+import { DeslizarParaConfirmar } from '@/components/app/deslizar-para-confirmar';
 import { FaixaDoTopo } from '@/components/app/faixa-do-topo';
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
+import { iniciarRastreamento, segundoPlanoDisponivel, situacaoDaPermissao } from '@/gps/rastreamento';
 import { useSessao } from '@/sessao/provedor-de-sessao';
 
-/**
- * Início da M1: quem está logado e a conexão com a API. Na M2, passa a ser guiado pelo
- * `GET /app/inicio` (documento 02 §2).
- */
+type Estado = 'sem_turno' | 'disponivel' | 'pausa' | 'em_rota';
+
+/** O estado da tela sai do /app/inicio (documento 02 §2); nada aqui guarda estado próprio. */
+function estadoDo(inicio: DadosDoInicio): Estado {
+  const { turno } = inicio;
+  if (turno === null || turno.status !== 'aberto') return 'sem_turno';
+  if (inicio.rotaAtiva !== null || turno.disponibilidade === 'ocupado') return 'em_rota';
+  return turno.disponibilidade === 'pausa' ? 'pausa' : 'disponivel';
+}
+
+const PERMISSAO: Readonly<Record<PermissaoDeLocalizacao['situacao'], string>> = {
+  negada: 'Para abrir o turno, permita a localização: é assim que a central vê onde você está.',
+  aproximada:
+    'A localização está como aproximada. Ative a localização precisa nos Ajustes: com a aproximada, você some do mapa da central.',
+  sem_segundo_plano:
+    'Permita a localização "o tempo todo" nos Ajustes: assim a central te vê mesmo com a tela apagada. Só enquanto o turno estiver aberto.',
+};
+
+/** Mensagem do último erro de uma ação do turno, com o caminho para os Ajustes quando é permissão. */
+function mensagemDoErro(erro: unknown): { texto: string; ajustes: boolean } | null {
+  if (erro === null || erro === undefined) return null;
+  if (erro instanceof PermissaoDeLocalizacao) return { texto: PERMISSAO[erro.situacao], ajustes: true };
+  return { texto: ehErroDaApi(erro) ? erro.message : 'Não deu certo. Tente de novo.', ajustes: false };
+}
+
 export default function Inicio(): ReactNode {
-  const { sair } = useSessao();
-  const [saindo, setSaindo] = useState(false);
+  const inicio = useInicio();
+  const estado = inicio.data === undefined ? null : estadoDo(inicio.data);
+  useGpsDoTurnoAberto(estado !== null && estado !== 'sem_turno');
   return (
     <View className="flex-1 bg-background">
       <FaixaDoTopo titulo="Moto Delivery" />
       <ScrollView contentContainerClassName="gap-4 px-4 py-6">
         <Saudacao />
+        <Conteudo consulta={inicio} estado={estado} />
         <CartaoDeNotificacoes />
-        <Text variante="eyebrow" className="mt-2">
-          Conexão com a API
-        </Text>
-        <Situacao />
-        <View className="gap-1 rounded-2xl border border-border bg-card p-4">
-          <Text variante="secundario">Endereço</Text>
-          <Text variante="mono">{BASE_DA_API ?? 'não configurado'}</Text>
-          <Text variante="secundario" className="mt-2">
-            Versão do app
-          </Text>
-          <Text variante="mono">{VERSAO_DO_APP}</Text>
-        </View>
       </ScrollView>
-      <BarraDeAcao>
-        <Button
-          variante="contorno"
-          disabled={saindo}
-          onPress={() => {
-            setSaindo(true);
-            void sair();
-          }}
-        >
-          <Text>{saindo ? 'Saindo…' : 'Sair'}</Text>
-        </Button>
-      </BarraDeAcao>
+      {estado === null ? null : <Acoes estado={estado} />}
     </View>
   );
+}
+
+/** Abriu o app com o turno aberto: religa o GPS (o sistema pode ter encerrado o serviço). */
+function useGpsDoTurnoAberto(turnoAberto: boolean): void {
+  useEffect(() => {
+    if (!turnoAberto) return;
+    const religar = async (): Promise<void> => {
+      if ((await situacaoDaPermissao()) === 'ok') await iniciarRastreamento();
+    };
+    void religar().catch(() => undefined);
+  }, [turnoAberto]);
 }
 
 function Saudacao(): ReactNode {
   const eu = useEu();
-  if (eu.isPending) return <Text variante="titulo">Olá!</Text>;
-  if (eu.isError) {
-    const mensagem = ehErroDaApi(eu.error) ? eu.error.message : 'Não deu para carregar seus dados.';
-    return <Aviso titulo="Olá!">{mensagem}</Aviso>;
-  }
-  const { usuario, organizacaoAtiva } = eu.data;
-  const primeiroNome = usuario.nome.split(' ')[0] ?? usuario.nome;
+  const nome = eu.data?.usuario.nome.split(' ')[0];
   return (
     <View className="gap-1">
-      <Text variante="titulo">{`Olá, ${primeiroNome}!`}</Text>
-      <Text variante="secundario">{organizacaoAtiva?.nome ?? 'Sem organização ativa'}</Text>
+      <Text variante="titulo">{nome === undefined ? 'Olá!' : `Olá, ${nome}!`}</Text>
+      <Text variante="secundario">{eu.data?.organizacaoAtiva?.nome ?? ' '}</Text>
     </View>
   );
 }
 
-function Situacao(): ReactNode {
-  const saude = useSaude();
-  if (BASE_DA_API === null) {
+const SITUACAO: Readonly<Record<Estado, { titulo: string; texto: string }>> = {
+  sem_turno: { titulo: 'Fora do turno', texto: 'Inicie o turno para receber ofertas.' },
+  disponivel: { titulo: 'Aguardando ofertas', texto: 'Quando chegar uma rota, o celular avisa.' },
+  pausa: { titulo: 'Em pausa', texto: 'Você não recebe ofertas enquanto estiver em pausa.' },
+  em_rota: { titulo: 'Em rota', texto: 'Você está com uma rota em andamento.' },
+};
+
+function Conteudo({
+  consulta,
+  estado,
+}: {
+  readonly consulta: ReturnType<typeof useInicio>;
+  readonly estado: Estado | null;
+}): ReactNode {
+  if (consulta.isPending) return <Cartao titulo="Carregando…" texto="Buscando sua situação." />;
+  if (consulta.isError || estado === null) {
+    const texto = ehErroDaApi(consulta.error) ? consulta.error.message : 'Não deu para carregar.';
     return (
-      <Aviso titulo="API não configurada">
-        Defina EXPO_PUBLIC_API_URL no .env com o IP da máquina na rede local, por exemplo
-        http://192.168.1.12:3333, e reinicie o Metro.
-      </Aviso>
+      <Cartao titulo="Sem resposta" texto={texto}>
+        <Button variante="secundario" onPress={() => void consulta.refetch()}>
+          <Text>Tentar de novo</Text>
+        </Button>
+      </Cartao>
     );
   }
-  if (saude.isPending) return <Aviso titulo="Consultando a API…">Aguarde um instante.</Aviso>;
-  if (saude.isError) {
-    const mensagem = ehErroDaApi(saude.error) ? saude.error.message : 'Não deu certo. Tente de novo.';
-    return <Aviso titulo="Sem resposta da API">{mensagem}</Aviso>;
-  }
-  const { status, banco, versao } = saude.data;
+  const { titulo, texto } = SITUACAO[estado];
+  const aviso =
+    estado !== 'sem_turno' && !segundoPlanoDisponivel()
+      ? ' No Expo Go, o GPS só funciona com o app aberto.'
+      : '';
+  return <Cartao titulo={titulo} texto={`${texto}${aviso}`} />;
+}
+
+function Acoes({ estado }: { readonly estado: Estado }): ReactNode {
+  const { abrir, disponibilidade, encerrar } = useAcoesDoTurno();
+  const { sair } = useSessao();
+  const ocupado = abrir.isPending || disponibilidade.isPending || encerrar.isPending;
+  const erro = mensagemDoErro(abrir.error ?? disponibilidade.error ?? encerrar.error);
   return (
-    <Aviso titulo={status === 'ok' ? 'API no ar' : 'API com problema'}>
-      {`Banco ${banco ? 'conectado' : 'fora do ar'} · versão ${versao}`}
-    </Aviso>
+    <BarraDeAcao>
+      {erro === null ? null : <AvisoDeErro texto={erro.texto} ajustes={erro.ajustes} />}
+      {estado === 'sem_turno' ? (
+        <>
+          <Button disabled={ocupado} onPress={() => abrir.mutate()}>
+            <Text>{abrir.isPending ? 'Abrindo…' : 'Iniciar turno'}</Text>
+          </Button>
+          <Button variante="fantasma" disabled={ocupado} onPress={() => void sair()}>
+            <Text>Sair</Text>
+          </Button>
+        </>
+      ) : null}
+      {estado === 'disponivel' ? (
+        <Button variante="secundario" disabled={ocupado} onPress={() => disponibilidade.mutate('pausa')}>
+          <Text>Pausar</Text>
+        </Button>
+      ) : null}
+      {estado === 'pausa' ? (
+        <Button disabled={ocupado} onPress={() => disponibilidade.mutate('disponivel')}>
+          <Text>Voltar a receber ofertas</Text>
+        </Button>
+      ) : null}
+      {estado === 'disponivel' || estado === 'pausa' ? (
+        <DeslizarParaConfirmar
+          texto="Deslize para encerrar o turno"
+          desabilitado={ocupado}
+          aoConfirmar={() => encerrar.mutate()}
+        />
+      ) : null}
+    </BarraDeAcao>
   );
 }
 
-function Aviso({ titulo, children }: { readonly titulo: string; readonly children: ReactNode }): ReactNode {
+function AvisoDeErro({ texto, ajustes }: { readonly texto: string; readonly ajustes: boolean }): ReactNode {
   return (
-    <View className="gap-1 rounded-2xl border border-border bg-card p-4">
-      <Text variante="tituloDeCard">{titulo}</Text>
-      <Text variante="secundario">{children}</Text>
+    <View accessibilityLiveRegion="polite" className="gap-3 rounded-2xl border border-destructive p-4">
+      <Text className="text-destructive">{texto}</Text>
+      {ajustes ? (
+        <Button variante="contorno" onPress={() => void Linking.openSettings()}>
+          <Text>Abrir Ajustes</Text>
+        </Button>
+      ) : null}
+    </View>
+  );
+}
+
+function Cartao({
+  titulo,
+  texto,
+  children,
+}: {
+  readonly titulo: string;
+  readonly texto: string;
+  readonly children?: ReactNode;
+}): ReactNode {
+  return (
+    <View className="gap-3 rounded-2xl border border-border bg-card p-4">
+      <View className="gap-1">
+        <Text variante="titulo">{titulo}</Text>
+        <Text variante="secundario">{texto}</Text>
+      </View>
+      {children}
     </View>
   );
 }

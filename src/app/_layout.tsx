@@ -1,4 +1,6 @@
 import '../../global.css';
+// Registra a tarefa do GPS no escopo do módulo: o sistema acorda o app só para rodá-la.
+import '@/gps/rastreamento';
 import {
   Inter_400Regular,
   Inter_500Medium,

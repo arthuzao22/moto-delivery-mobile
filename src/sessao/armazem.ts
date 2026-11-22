@@ -10,6 +10,12 @@ const MARCA_DE_INSTALACAO = 'instalacao.marcada';
 
 const BASE_DO_IDENTIFICADOR = 36;
 
+/**
+ * O GPS do turno envia pontos com a tela apagada: no iPhone, o padrão do Keychain só abre com o
+ * aparelho desbloqueado. Depois do primeiro desbloqueio basta, e o item não migra para outro aparelho.
+ */
+const ACESSO = { keychainAccessible: SecureStore.AFTER_FIRST_UNLOCK_THIS_DEVICE_ONLY } as const;
+
 let emMemoria: Tokens | null | undefined;
 
 /**
@@ -46,7 +52,7 @@ function lerJson(texto: string): unknown {
 
 export async function guardarTokens(tokens: Tokens): Promise<void> {
   emMemoria = tokens;
-  await SecureStore.setItemAsync(CHAVE_TOKENS, JSON.stringify(tokens));
+  await SecureStore.setItemAsync(CHAVE_TOKENS, JSON.stringify(tokens), ACESSO);
 }
 
 export async function apagarSessao(): Promise<void> {
@@ -60,7 +66,7 @@ export async function dispositivoId(): Promise<string> {
   const guardado = await SecureStore.getItemAsync(CHAVE_DISPOSITIVO).catch(() => null);
   if (guardado !== null) return guardado;
   const novo = `${Date.now().toString(BASE_DO_IDENTIFICADOR)}-${Math.random().toString(BASE_DO_IDENTIFICADOR).slice(2)}`;
-  await SecureStore.setItemAsync(CHAVE_DISPOSITIVO, novo).catch(() => undefined);
+  await SecureStore.setItemAsync(CHAVE_DISPOSITIVO, novo, ACESSO).catch(() => undefined);
   return novo;
 }
 
@@ -70,5 +76,5 @@ export async function lerTokenDePush(): Promise<string | null> {
 }
 
 export async function guardarTokenDePush(token: string): Promise<void> {
-  await SecureStore.setItemAsync(CHAVE_TOKEN_DE_PUSH, token).catch(() => undefined);
+  await SecureStore.setItemAsync(CHAVE_TOKEN_DE_PUSH, token, ACESSO).catch(() => undefined);
 }

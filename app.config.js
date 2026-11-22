@@ -89,6 +89,19 @@ module.exports = ({ config }) => {
       'expo-secure-store',
       'expo-notifications',
       [
+        // GPS do turno com o app em segundo plano (documento 05 §4.2). Os textos dizem o porquê,
+        // como a revisão das lojas exige (documento 02 §6).
+        'expo-location',
+        {
+          locationWhenInUsePermission: 'Para a central ver onde você está durante o turno e as entregas.',
+          locationAlwaysAndWhenInUsePermission:
+            'Para a central ver onde você está durante o turno, mesmo com a tela apagada. Só enquanto o turno estiver aberto.',
+          isIosBackgroundLocationEnabled: true,
+          isAndroidBackgroundLocationEnabled: true,
+          isAndroidForegroundServiceEnabled: true,
+        },
+      ],
+      [
         'expo-splash-screen',
         { image: './assets/splash-icon.png', imageWidth: 160, backgroundColor: PRETO, resizeMode: 'contain' },
       ],
