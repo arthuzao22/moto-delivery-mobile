@@ -11,6 +11,7 @@ import { linkDoDiscador, linkDoWhatsapp } from '@/lib/navegacao';
 import { paradaAtual, progresso } from '@/lib/parada-atual';
 import { BotoesDeNavegacao } from './botoes-de-navegacao';
 import { ProgressoDasParadas } from './progresso-das-paradas';
+import { SituacaoDaPorta } from './situacao-da-porta';
 import { AvisarACentral, ErroDaAcao } from './acoes-comuns';
 
 const FORMA_PREVISTA: Readonly<Record<string, string>> = {
@@ -26,9 +27,6 @@ const MAQUININHA: Readonly<Record<string, string>> = {
   empresa: 'Maquininha da empresa',
   motoboy: 'Sua maquininha',
 };
-
-/** Ausente, recusa e devolução chegam na M5; até lá, a central resolve pelo painel. */
-const SITUACOES_DA_M5 = new Set(['cliente_ausente', 'aguardando_decisao', 'retornando']);
 
 export function ParadaDaVez({ rota }: { readonly rota: RotaAtiva }): ReactNode {
   const parada = paradaAtual(rota.paradas);
@@ -51,9 +49,7 @@ export function ParadaDaVez({ rota }: { readonly rota: RotaAtiva }): ReactNode {
         {parada.comprovante.pendente ? (
           <Aviso texto="Esta entrega exige comprovante. A foto pelo app chega na próxima etapa; até lá, fale com a central." />
         ) : null}
-        {SITUACOES_DA_M5.has(parada.status) ? (
-          <Aviso texto="Aguarde a decisão da central ou do restaurante sobre esta entrega." />
-        ) : null}
+        <SituacaoDaPorta parada={parada} />
         {parada.status === 'a_caminho' ? (
           <BotoesDeNavegacao destino={{ endereco: parada.destino, coordenada: parada.coordenadaDestino }} />
         ) : null}
@@ -124,13 +120,13 @@ function Contato({ parada }: { readonly parada: Parada }): ReactNode {
 /** Uma ação principal por vez, na ordem do fluxo: iniciar, cheguei, pagamento, entregar. */
 function AcoesDaParada({ parada }: { readonly parada: Parada }): ReactNode {
   const router = useRouter();
-  const { iniciar, chegar, entregar } = useAcoesDaRota();
+  const { iniciar, chegar, entregar, ausente } = useAcoesDaRota();
   const pode = (acao: Parada['acoesPermitidas'][number]): boolean => parada.acoesPermitidas.includes(acao);
-  const enviando = iniciar.isPending || chegar.isPending || entregar.isPending;
+  const enviando = iniciar.isPending || chegar.isPending || entregar.isPending || ausente.isPending;
   const id = parada.entregaId;
   return (
     <BarraDeAcao>
-      <ErroDaAcao erro={iniciar.error ?? chegar.error ?? entregar.error} />
+      <ErroDaAcao erro={iniciar.error ?? chegar.error ?? entregar.error ?? ausente.error} />
       {pode('iniciar') ? (
         <Button disabled={enviando} onPress={() => iniciar.mutate(id)}>
           <Text>{iniciar.isPending ? 'Enviando…' : 'Iniciar esta entrega'}</Text>
@@ -152,6 +148,27 @@ function AcoesDaParada({ parada }: { readonly parada: Parada }): ReactNode {
           desabilitado={enviando}
           aoConfirmar={() => entregar.mutate(id)}
         />
+      ) : null}
+      {pode('devolver') ? (
+        <Button onPress={() => router.push({ pathname: '/entrega/[id]/devolucao', params: { id } })}>
+          <Text>Devolver no restaurante</Text>
+        </Button>
+      ) : null}
+      {/* Um gesto deslizante por vez: com o entregar liberado, o ausente não aparece. */}
+      {pode('ausente') && !pode('entregar') ? (
+        <DeslizarParaConfirmar
+          texto="Deslize: cliente ausente"
+          desabilitado={enviando}
+          aoConfirmar={() => ausente.mutate(id)}
+        />
+      ) : null}
+      {pode('recusada_pelo_cliente') ? (
+        <Button
+          variante="fantasma"
+          onPress={() => router.push({ pathname: '/entrega/[id]/recusa', params: { id } })}
+        >
+          <Text>Cliente recusou o pedido</Text>
+        </Button>
       ) : null}
       <AvisarACentral entregaId={id} />
     </BarraDeAcao>

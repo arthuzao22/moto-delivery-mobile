@@ -119,5 +119,49 @@ export function useAcoesDaRota() {
       ),
     ),
   );
-  return { chegarNaColeta, coletar, iniciar, chegar, contato, receber, entregar, ocorrencia };
+  const ausente = useMutation(
+    acao(async (entregaId: string) =>
+      dadosDe(
+        api.POST('/app/entregas/{id}/ausente', { params: com(entregaId, 'ausente'), body: await momento() }),
+      ),
+    ),
+  );
+  const recusada = useMutation(
+    acao(
+      async (entrada: {
+        entregaId: string;
+        tipo: 'cliente_recusou' | 'pagamento_recusado';
+        motivo: string;
+      }) =>
+        dadosDe(
+          api.POST('/app/entregas/{id}/recusada-pelo-cliente', {
+            params: com(entrada.entregaId, 'recusa'),
+            body: { tipo: entrada.tipo, motivo: entrada.motivo, ...(await momento()) },
+          }),
+        ),
+    ),
+  );
+  const devolver = useMutation(
+    acao(async (entrada: { entregaId: string; codigoDevolucao: string }) =>
+      dadosDe(
+        api.POST('/app/entregas/{id}/devolver', {
+          params: com(entrada.entregaId, 'devolver'),
+          body: { codigoDevolucao: entrada.codigoDevolucao, ...(await momento()) },
+        }),
+      ),
+    ),
+  );
+  return {
+    chegarNaColeta,
+    coletar,
+    iniciar,
+    chegar,
+    contato,
+    receber,
+    entregar,
+    ocorrencia,
+    ausente,
+    recusada,
+    devolver,
+  };
 }

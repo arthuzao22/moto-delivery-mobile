@@ -17,6 +17,8 @@ export default function LayoutDoApp(): ReactNode {
       <Stack.Screen name="index" />
       <Stack.Screen name="entrega/[id]/pagamento" options={{ presentation: 'modal' }} />
       <Stack.Screen name="ocorrencia" options={{ presentation: 'modal' }} />
+      <Stack.Screen name="entrega/[id]/recusa" options={{ presentation: 'modal' }} />
+      <Stack.Screen name="entrega/[id]/devolucao" options={{ presentation: 'modal' }} />
       <Stack.Screen
         name="oferta/[id]"
         options={{ presentation: 'fullScreenModal', animation: 'slide_from_bottom', gestureEnabled: false }}
