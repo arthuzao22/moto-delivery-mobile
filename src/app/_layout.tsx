@@ -1,6 +1,7 @@
 import '../../global.css';
 // Registra a tarefa do GPS no escopo do módulo: o sistema acorda o app só para rodá-la.
 import '@/gps/rastreamento';
+import { ligarConexao } from '@/fila/conexao';
 import {
   Inter_400Regular,
   Inter_500Medium,
@@ -23,6 +24,7 @@ import { TEMA_DA_NAVEGACAO } from '@/lib/tema';
 import { ProvedorDeSessao, useSessao } from '@/sessao/provedor-de-sessao';
 
 void SplashScreen.preventAutoHideAsync();
+ligarConexao();
 
 const clienteDeConsultas = new QueryClient({ defaultOptions: { queries: { retry: 1 } } });
 

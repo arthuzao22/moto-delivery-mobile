@@ -1,8 +1,7 @@
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useAcaoDeCampo, type PedidoDeCampo } from '@/fila/use-acao-de-campo';
 import { posicaoAtual } from '@/gps/posicao-atual';
-import { agoraIso, novaChave } from './chave';
-import { api } from './cliente';
-import { dadosDe } from './executar';
+import { agoraIso } from './chave';
+import type { paths } from './schema';
 import type { Inicio } from './turno';
 
 export type RotaAtiva = NonNullable<Inicio['rotaAtiva']>;
@@ -19,137 +18,145 @@ export interface ParteDoRecebimento {
 export type TipoDeOcorrencia =
   'atraso_restaurante' | 'endereco_incorreto' | 'avaria' | 'pane_veiculo' | 'transito' | 'acidente' | 'outro';
 
-/** O que toda ação de campo leva: a hora real do toque e, quando há, a posição. */
+/** O corpo que o contrato espera em cada rota: a fila guarda o JSON, mas o tipo é conferido aqui. */
+type Corpo<P extends keyof paths> = paths[P] extends {
+  post: { requestBody?: { content: { 'application/json': infer C } } };
+}
+  ? C
+  : never;
+
+/** A hora real do toque e, quando há, a posição: a fila reenvia exatamente isso, mesmo bem depois. */
 async function momento(): Promise<{ eventoEm: string; posicao?: { lat: number; lng: number } }> {
   const posicao = await posicaoAtual();
   return { eventoEm: agoraIso(), ...(posicao === null ? {} : { posicao }) };
 }
 
-const com = (id: string, prefixo: string) => ({
-  path: { id },
-  header: { 'Idempotency-Key': novaChave(prefixo) },
-});
+/** As ações de uma parada: mesma forma, mudam a rota, o corpo e o avanço otimista. */
+function naParada(
+  entregaId: string,
+  passo: { rota: string; rotulo: string; corpo: object; avanco: PedidoDeCampo['avanco'] },
+): PedidoDeCampo {
+  return {
+    prefixo: passo.rota,
+    caminho: `/app/entregas/${entregaId}/${passo.rota}`,
+    corpo: passo.corpo,
+    grupo: 'rota',
+    descricao: passo.rotulo,
+    avanco: passo.avanco,
+  };
+}
 
 /**
- * As ações da coleta e da parada (documento 04 M4). Cada uma lê o Início de novo depois: a tela
- * e os botões (acoesPermitidas) vêm sempre da API.
+ * As ações da coleta e da parada (documento 04 M4), todas pela fila offline (M6): com sinal vão
+ * na hora; sem sinal, esperam na ordem e a tela avança. Cada uma tem o próprio "enviando" e erro.
  */
 export function useAcoesDaRota() {
-  const clienteDeConsultas = useQueryClient();
-  const atualizar = async (): Promise<void> => clienteDeConsultas.invalidateQueries({ queryKey: ['inicio'] });
-  const acao = <T>(executar: (entrada: T) => Promise<unknown>) =>
-    // Uma mutação por ação, para cada botão ter o próprio "enviando" e o próprio erro.
-    ({ mutationFn: executar, onSettled: atualizar });
-
-  const chegarNaColeta = useMutation(
-    acao(async (rotaId: string) =>
-      dadosDe(
-        api.POST('/app/rotas/{id}/cheguei-coleta', {
-          params: com(rotaId, 'cheguei-coleta'),
-          body: await momento(),
-        }),
-      ),
-    ),
+  const chegarNaColeta = useAcaoDeCampo(async (rotaId: string) => ({
+    prefixo: 'cheguei-coleta',
+    caminho: `/app/rotas/${rotaId}/cheguei-coleta`,
+    corpo: (await momento()) satisfies Corpo<'/app/rotas/{id}/cheguei-coleta'>,
+    grupo: 'rota',
+    descricao: 'Cheguei no restaurante',
+    avanco: { tipo: 'cheguei_coleta' },
+  }));
+  const coletar = useAcaoDeCampo(
+    async (entrada: { rotaId: string; entregaIds: string[]; codigoColeta?: string }) => ({
+      prefixo: 'coletar',
+      caminho: `/app/rotas/${entrada.rotaId}/coletar`,
+      corpo: {
+        entregaIds: entrada.entregaIds,
+        eventoEm: agoraIso(),
+        ...(entrada.codigoColeta === undefined ? {} : { codigoColeta: entrada.codigoColeta }),
+      } satisfies Corpo<'/app/rotas/{id}/coletar'>,
+      grupo: 'rota',
+      descricao: 'Coleta',
+      avanco: { tipo: 'coletar', entregaIds: entrada.entregaIds },
+    }),
   );
-  const coletar = useMutation(
-    acao(async (entrada: { rotaId: string; entregaIds: string[]; codigoColeta?: string }) =>
-      dadosDe(
-        api.POST('/app/rotas/{id}/coletar', {
-          params: com(entrada.rotaId, 'coletar'),
-          body: {
-            entregaIds: entrada.entregaIds,
-            eventoEm: agoraIso(),
-            ...(entrada.codigoColeta === undefined ? {} : { codigoColeta: entrada.codigoColeta }),
-          },
-        }),
-      ),
-    ),
+  const iniciar = useAcaoDeCampo(async (entregaId: string) =>
+    naParada(entregaId, {
+      rota: 'iniciar',
+      rotulo: 'Iniciar entrega',
+      corpo: await momento(),
+      avanco: { tipo: 'sem_avanco' },
+    }),
   );
-  const iniciar = useMutation(
-    acao(async (entregaId: string) =>
-      dadosDe(
-        api.POST('/app/entregas/{id}/iniciar', { params: com(entregaId, 'iniciar'), body: await momento() }),
-      ),
-    ),
+  const chegar = useAcaoDeCampo(async (entregaId: string) =>
+    naParada(entregaId, {
+      rota: 'cheguei',
+      rotulo: 'Cheguei',
+      corpo: await momento(),
+      avanco: { tipo: 'cheguei', entregaId },
+    }),
   );
-  const chegar = useMutation(
-    acao(async (entregaId: string) =>
-      dadosDe(
-        api.POST('/app/entregas/{id}/cheguei', { params: com(entregaId, 'cheguei'), body: await momento() }),
-      ),
-    ),
+  const contato = useAcaoDeCampo(async (entrada: { entregaId: string; canal: 'ligacao' | 'whatsapp' }) =>
+    naParada(entrada.entregaId, {
+      rota: 'contato',
+      rotulo: 'Contato com o cliente',
+      corpo: { canal: entrada.canal, ...(await momento()) } satisfies Corpo<'/app/entregas/{id}/contato'>,
+      avanco: { tipo: 'sem_avanco' },
+    }),
   );
-  const contato = useMutation(
-    acao(async (entrada: { entregaId: string; canal: 'ligacao' | 'whatsapp' }) =>
-      dadosDe(
-        api.POST('/app/entregas/{id}/contato', {
-          params: com(entrada.entregaId, 'contato'),
-          body: { canal: entrada.canal, ...(await momento()) },
-        }),
-      ),
-    ),
+  const receber = useAcaoDeCampo(async (entrada: { entregaId: string; itens: ParteDoRecebimento[] }) =>
+    naParada(entrada.entregaId, {
+      rota: 'recebimentos',
+      rotulo: 'Pagamento',
+      corpo: {
+        itens: entrada.itens,
+        ...(await momento()),
+      } satisfies Corpo<'/app/entregas/{id}/recebimentos'>,
+      avanco: { tipo: 'recebimento', entregaId: entrada.entregaId },
+    }),
   );
-  const receber = useMutation(
-    acao(async (entrada: { entregaId: string; itens: ParteDoRecebimento[] }) =>
-      dadosDe(
-        api.POST('/app/entregas/{id}/recebimentos', {
-          params: com(entrada.entregaId, 'recebimento'),
-          body: { itens: entrada.itens, ...(await momento()) },
-        }),
-      ),
-    ),
+  const entregar = useAcaoDeCampo(async (entregaId: string) =>
+    naParada(entregaId, {
+      rota: 'entregar',
+      rotulo: 'Entrega',
+      corpo: await momento(),
+      avanco: { tipo: 'entregar', entregaId },
+    }),
   );
-  const entregar = useMutation(
-    acao(async (entregaId: string) =>
-      dadosDe(
-        api.POST('/app/entregas/{id}/entregar', {
-          params: com(entregaId, 'entregar'),
-          body: await momento(),
-        }),
-      ),
-    ),
+  const ausente = useAcaoDeCampo(async (entregaId: string) =>
+    naParada(entregaId, {
+      rota: 'ausente',
+      rotulo: 'Cliente ausente',
+      corpo: await momento(),
+      avanco: { tipo: 'ausente', entregaId },
+    }),
   );
-  const ocorrencia = useMutation(
-    acao(async (entrada: { tipo: TipoDeOcorrencia; descricao?: string; entregaId?: string }) =>
-      dadosDe(
-        api.POST('/app/ocorrencias', {
-          params: { header: { 'Idempotency-Key': novaChave('ocorrencia') } },
-          body: { ...entrada, ...(await momento()) },
-        }),
-      ),
-    ),
+  const recusada = useAcaoDeCampo(
+    async (entrada: { entregaId: string; tipo: 'cliente_recusou' | 'pagamento_recusado'; motivo: string }) =>
+      naParada(entrada.entregaId, {
+        rota: 'recusada-pelo-cliente',
+        rotulo: 'Recusa do cliente',
+        corpo: {
+          tipo: entrada.tipo,
+          motivo: entrada.motivo,
+          ...(await momento()),
+        } satisfies Corpo<'/app/entregas/{id}/recusada-pelo-cliente'>,
+        avanco: { tipo: 'recusada', entregaId: entrada.entregaId },
+      }),
   );
-  const ausente = useMutation(
-    acao(async (entregaId: string) =>
-      dadosDe(
-        api.POST('/app/entregas/{id}/ausente', { params: com(entregaId, 'ausente'), body: await momento() }),
-      ),
-    ),
+  const devolver = useAcaoDeCampo(async (entrada: { entregaId: string; codigoDevolucao: string }) =>
+    naParada(entrada.entregaId, {
+      rota: 'devolver',
+      rotulo: 'Devolução',
+      corpo: {
+        codigoDevolucao: entrada.codigoDevolucao,
+        ...(await momento()),
+      } satisfies Corpo<'/app/entregas/{id}/devolver'>,
+      avanco: { tipo: 'devolver', entregaId: entrada.entregaId },
+    }),
   );
-  const recusada = useMutation(
-    acao(
-      async (entrada: {
-        entregaId: string;
-        tipo: 'cliente_recusou' | 'pagamento_recusado';
-        motivo: string;
-      }) =>
-        dadosDe(
-          api.POST('/app/entregas/{id}/recusada-pelo-cliente', {
-            params: com(entrada.entregaId, 'recusa'),
-            body: { tipo: entrada.tipo, motivo: entrada.motivo, ...(await momento()) },
-          }),
-        ),
-    ),
-  );
-  const devolver = useMutation(
-    acao(async (entrada: { entregaId: string; codigoDevolucao: string }) =>
-      dadosDe(
-        api.POST('/app/entregas/{id}/devolver', {
-          params: com(entrada.entregaId, 'devolver'),
-          body: { codigoDevolucao: entrada.codigoDevolucao, ...(await momento()) },
-        }),
-      ),
-    ),
+  const ocorrencia = useAcaoDeCampo(
+    async (entrada: { tipo: TipoDeOcorrencia; descricao?: string; entregaId?: string }) => ({
+      prefixo: 'ocorrencia',
+      caminho: '/app/ocorrencias',
+      corpo: { ...entrada, ...(await momento()) } satisfies Corpo<'/app/ocorrencias'>,
+      grupo: 'ocorrencia',
+      descricao: 'Aviso à central',
+      avanco: { tipo: 'sem_avanco' },
+    }),
   );
   return {
     chegarNaColeta,

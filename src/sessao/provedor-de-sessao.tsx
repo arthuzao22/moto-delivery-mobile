@@ -2,6 +2,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { api } from '@/api/cliente';
 import { dadosDe } from '@/api/executar';
+import { esvaziar as esvaziarFila } from '@/fila/armazem-da-fila';
 import { pararRastreamento } from '@/gps/rastreamento';
 import {
   apagarSessao,
@@ -54,6 +55,7 @@ export function ProvedorDeSessao({ children }: { readonly children: ReactNode })
 
   const esquecer = useCallback(async () => {
     await pararRastreamento().catch(() => undefined);
+    await esvaziarFila().catch(() => undefined);
     await apagarSessao();
     clienteDeConsultas.clear();
     setSituacao('anonima');

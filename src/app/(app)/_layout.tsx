@@ -1,6 +1,7 @@
 import { Stack } from 'expo-router';
 import type { ReactNode } from 'react';
 import { useInicio } from '@/api/turno';
+import { useFilaEmSegundoPlano } from '@/fila/use-fila-em-segundo-plano';
 import { useAberturaPeloPush } from '@/notificacoes/use-abertura-pelo-push';
 import { useTempoReal } from '@/tempo-real/use-tempo-real';
 
@@ -12,6 +13,7 @@ export default function LayoutDoApp(): ReactNode {
   const inicio = useInicio();
   useTempoReal(inicio.data?.turno?.status === 'aberto');
   useAberturaPeloPush();
+  useFilaEmSegundoPlano();
   return (
     <Stack screenOptions={{ headerShown: false }}>
       <Stack.Screen name="index" />

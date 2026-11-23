@@ -6,6 +6,7 @@ import {
   situacaoDaPermissao,
   type SituacaoDaPermissao,
 } from '@/gps/rastreamento';
+import { useAcaoDeCampo } from '@/fila/use-acao-de-campo';
 import { agoraIso, novaChave } from './chave';
 import { api } from './cliente';
 import { dadosDe } from './executar';
@@ -52,29 +53,25 @@ export function useAcoesDoTurno() {
     onSettled: atualizar,
   });
 
-  const disponibilidade = useMutation({
-    mutationFn: async (nova: 'disponivel' | 'pausa') =>
-      dadosDe(
-        api.POST('/app/disponibilidade', {
-          params: idempotente('disponibilidade'),
-          body: { disponibilidade: nova, eventoEm: agoraIso() },
-        }),
-      ),
-    onSettled: atualizar,
-  });
+  // Pausar, voltar e encerrar passam pela fila offline (M6): sem sinal, a tela já muda.
+  const disponibilidade = useAcaoDeCampo(async (nova: 'disponivel' | 'pausa') => ({
+    prefixo: 'disponibilidade',
+    caminho: '/app/disponibilidade',
+    corpo: { disponibilidade: nova, eventoEm: agoraIso() },
+    grupo: 'turno',
+    descricao: nova === 'pausa' ? 'Pausa' : 'Volta da pausa',
+    avanco: { tipo: 'disponibilidade', valor: nova },
+  }));
 
-  const encerrar = useMutation({
-    mutationFn: async () => {
-      await dadosDe(
-        api.POST('/app/turnos/fechar', {
-          params: idempotente('turno-fechar'),
-          body: { eventoEm: agoraIso() },
-        }),
-      );
-      await pararRastreamento();
-    },
-    onSettled: atualizar,
-  });
+  const encerrar = useAcaoDeCampo(async () => ({
+    prefixo: 'turno-fechar',
+    caminho: '/app/turnos/fechar',
+    corpo: { eventoEm: agoraIso() },
+    grupo: 'turno',
+    descricao: 'Encerrar turno',
+    avanco: { tipo: 'encerrar_turno' },
+    depois: pararRastreamento,
+  }));
 
   return { abrir, disponibilidade, encerrar };
 }

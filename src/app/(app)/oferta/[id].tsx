@@ -7,6 +7,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ehErroDaApi } from '@/api/erro-da-api';
 import { useAcoesDaOferta, useOferta, type Oferta } from '@/api/ofertas';
 import { BarraDeAcao } from '@/components/app/barra-de-acao';
+import { useSemSinal } from '@/fila/conexao';
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
 import { fracaoRestante, formatarKm, segundosRestantes } from '@/lib/oferta';
@@ -27,6 +28,7 @@ export default function TelaDaOferta(): ReactNode {
   const { visualizar, aceitar, recusar } = useAcoesDaOferta(id);
   const [escolhendoMotivo, setEscolhendoMotivo] = useState(false);
   const agora = useRelogio();
+  const semSinal = useSemSinal();
   // Toca enquanto a oferta está aberta e ninguém decidiu: o toque em aceitar ou recusar já silencia.
   const decidindo = aceitar.isPending || recusar.isPending || aceitar.isSuccess || recusar.isSuccess;
   const valendo = oferta !== null && segundosRestantes(oferta.expiraEm, agora) > 0;
@@ -84,8 +86,10 @@ export default function TelaDaOferta(): ReactNode {
           </>
         ) : (
           <>
+            {/* A disputa é decidida na hora: aceitar não entra na fila offline (documento 04 M6). */}
+            {semSinal ? <Text variante="secundario">Sem sinal: aceitar precisa de internet.</Text> : null}
             <Button
-              disabled={ocupado}
+              disabled={ocupado || semSinal}
               onPress={() => {
                 void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
                 aceitar.mutate();

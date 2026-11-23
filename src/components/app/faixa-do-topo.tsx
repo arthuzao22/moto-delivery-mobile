@@ -3,6 +3,7 @@ import type { ReactNode } from 'react';
 import { Pressable, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Text } from '@/components/ui/text';
+import { AvisoDeSinal } from './aviso-de-sinal';
 import { proximaPreferencia, type PreferenciaDeTema } from '@/lib/preferencia-de-tema';
 import { useTema } from '@/lib/provedor-de-tema';
 import { COR_DO_CHROME } from '@/lib/tema';
@@ -43,6 +44,7 @@ export function FaixaDoTopo({ titulo }: { readonly titulo: string }): ReactNode 
           <Icone color={COR_DO_CHROME.texto} size={TAMANHO_DO_ICONE} strokeWidth={2} />
         </Pressable>
       </View>
+      <AvisoDeSinal />
     </View>
   );
 }

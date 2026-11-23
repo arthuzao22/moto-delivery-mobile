@@ -9,6 +9,7 @@ import {
   useInicio,
   type Inicio as DadosDoInicio,
 } from '@/api/turno';
+import { AvisoDeConflito } from '@/components/app/aviso-de-sinal';
 import { BarraDeAcao } from '@/components/app/barra-de-acao';
 import { CartaoDeNotificacoes } from '@/components/app/cartao-de-notificacoes';
 import { DeslizarParaConfirmar } from '@/components/app/deslizar-para-confirmar';
@@ -53,6 +54,9 @@ export default function Inicio(): ReactNode {
     return (
       <View className="flex-1 bg-background">
         <FaixaDoTopo titulo="Moto Delivery" />
+        <View className="px-4 pt-4 empty:hidden">
+          <AvisoDeConflito />
+        </View>
         <TelaDaRota rota={rota} />
       </View>
     );
@@ -61,6 +65,7 @@ export default function Inicio(): ReactNode {
     <View className="flex-1 bg-background">
       <FaixaDoTopo titulo="Moto Delivery" />
       <ScrollView contentContainerClassName="gap-4 px-4 py-6">
+        <AvisoDeConflito />
         <Saudacao />
         <Conteudo consulta={inicio} estado={estado} />
         <CartaoDeNotificacoes />

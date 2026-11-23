@@ -44,15 +44,15 @@ function tokensDe(corpo: unknown): Parameters<typeof guardarTokens>[0] | null {
 
 export const renovador = new Renovador({ ler: lerTokens, guardar: guardarTokens, pedir: pedirRenovacao });
 
-/** Cliente único da API, tipado pelo contrato: Bearer, renovação única e repetição no 401. */
-export const api = createClient<paths>({
-  baseUrl: BASE_DA_API ?? '',
-  fetch: criarFetchAutenticado({
-    fetch: async (requisicao) => fetch(requisicao),
-    ler: lerTokens,
-    renovar: async () => renovador.renovar(),
-    aoPerderSessao: avisarSessaoPerdida,
-    agora: () => new Date(),
-  }),
+/** O fetch com Bearer, renovação única e repetição no 401. A fila offline também envia por ele. */
+export const fetchDaApi = criarFetchAutenticado({
+  fetch: async (requisicao) => fetch(requisicao),
+  ler: lerTokens,
+  renovar: async () => renovador.renovar(),
+  aoPerderSessao: avisarSessaoPerdida,
+  agora: () => new Date(),
 });
+
+/** Cliente único da API, tipado pelo contrato. */
+export const api = createClient<paths>({ baseUrl: BASE_DA_API ?? '', fetch: fetchDaApi });
 api.use(versao);
