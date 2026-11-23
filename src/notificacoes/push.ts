@@ -21,12 +21,22 @@ export async function moduloDeNotificacoes(): Promise<typeof ExpoNotifications |
 }
 
 /**
- * Canal dos avisos sem som (A5 na API: rota.transferida e as decisões sobre a entrega).
- * O canal "ofertas" entra junto com o oferta.wav: no Android, o som de um canal não muda depois de
- * criado, então criá-lo sem o som prenderia a oferta ao som padrão.
+ * Dois canais (A5 na API): "ofertas", com o som próprio (assets/sons/oferta.wav), importância máxima
+ * e vibração longa; "avisos", sem som, para as decisões sobre a entrega. No Android o som de um canal
+ * não muda depois de criado: trocar o som da oferta exige um canal com outro id (e a API junto).
  */
 async function criarCanais(notificacoes: typeof ExpoNotifications): Promise<void> {
   if (Platform.OS !== 'android') return;
+  await notificacoes.setNotificationChannelAsync('ofertas', {
+    name: 'Ofertas de rota',
+    description: 'Toca alto quando chega uma rota para você aceitar.',
+    importance: notificacoes.AndroidImportance.MAX,
+    sound: 'oferta.wav',
+    vibrationPattern: [0, 600, 400, 600, 400, 600],
+    enableVibrate: true,
+    lockscreenVisibility: notificacoes.AndroidNotificationVisibility.PUBLIC,
+    audioAttributes: { usage: notificacoes.AndroidAudioUsage.NOTIFICATION_RINGTONE },
+  });
   await notificacoes.setNotificationChannelAsync('avisos', {
     name: 'Avisos da entrega',
     description: 'Decisões da central e do restaurante sobre as suas entregas.',

@@ -87,7 +87,8 @@ module.exports = ({ config }) => {
       'expo-router',
       'expo-font',
       'expo-secure-store',
-      'expo-notifications',
+      // O som da oferta vai no app para o push tocá-lo (canal "ofertas" no Android, sound no iOS).
+      ['expo-notifications', { sounds: ['./assets/sons/oferta.wav'] }],
       [
         // GPS do turno com o app em segundo plano (documento 05 §4.2). Os textos dizem o porquê,
         // como a revisão das lojas exige (documento 02 §6).
