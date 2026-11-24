@@ -2209,6 +2209,93 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/faturas/{id}/nota-fiscal": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Registra (ou substitui) a nota da fatura: número, data, código, link e PDF/XML já enviados por /arquivos (categoria nota_fiscal). Fatura cancelada dá 422 */
+        put: operations["faturas.notaFiscal.registrar"];
+        post?: never;
+        /** Tira a nota da fatura (os arquivos continuam guardados) */
+        delete: operations["faturas.notaFiscal.remover"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/plataforma/faturas/{id}/nota-fiscal": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Registra (ou substitui) a nota da fatura da plataforma; os arquivos vêm de .../nota-fiscal/arquivos */
+        put: operations["plataforma.faturas.notaFiscal.registrar"];
+        post?: never;
+        /** Tira a nota da fatura da plataforma */
+        delete: operations["plataforma.faturas.notaFiscal.remover"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/plataforma/faturas/{id}/nota-fiscal/arquivos": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** PDF ou XML da nota (até 5 MB): registra no tenant da organização e devolve a URL de envio (10 min) */
+        post: operations["plataforma.faturas.notaFiscal.urlEnvio"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/plataforma/faturas/{id}/nota-fiscal/arquivos/{arquivoId}/confirmar": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Confere no storage que o arquivo chegou como pedido e confirma */
+        post: operations["plataforma.faturas.notaFiscal.confirmar"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/plataforma/faturas/{id}/nota-fiscal/arquivos/{arquivoId}/url": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** URL de leitura de 5 min do PDF ou XML da nota */
+        get: operations["plataforma.faturas.notaFiscal.urlLeitura"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/dashboard/empresa": {
         parameters: {
             query?: never;
@@ -2541,6 +2628,23 @@ export interface paths {
         };
         /** Turno, ofertas abertas e rota ativa do motoboy do token */
         get: operations["appMotoboy.inicio"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/app/entregas": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Entregas que o motoboy do token terminou no período (padrão: hoje; até 31 dias), com resumo e ganho de cada uma */
+        get: operations["appMotoboy.historico"];
         put?: never;
         post?: never;
         delete?: never;
@@ -5292,6 +5396,17 @@ export interface operations {
                             geradaAutomaticamente: boolean;
                             /** Format: date-time */
                             criadaEm: string;
+                            notaFiscal: {
+                                numero: string;
+                                /** Format: date */
+                                emitidaEm: string;
+                                codigoVerificacao: string | null;
+                                link: string | null;
+                                pdfArquivoId: string | null;
+                                xmlArquivoId: string | null;
+                                /** Format: date-time */
+                                registradaEm: string;
+                            } | null;
                             acoesPermitidas: ("pagar" | "cancelar")[];
                         }[];
                     };
@@ -5397,6 +5512,17 @@ export interface operations {
                                 geradaAutomaticamente: boolean;
                                 /** Format: date-time */
                                 criadaEm: string;
+                                notaFiscal: {
+                                    numero: string;
+                                    /** Format: date */
+                                    emitidaEm: string;
+                                    codigoVerificacao: string | null;
+                                    link: string | null;
+                                    pdfArquivoId: string | null;
+                                    xmlArquivoId: string | null;
+                                    /** Format: date-time */
+                                    registradaEm: string;
+                                } | null;
                                 acoesPermitidas: ("pagar" | "cancelar")[];
                             }[];
                             ignoradas: {
@@ -5499,6 +5625,17 @@ export interface operations {
                             geradaAutomaticamente: boolean;
                             /** Format: date-time */
                             criadaEm: string;
+                            notaFiscal: {
+                                numero: string;
+                                /** Format: date */
+                                emitidaEm: string;
+                                codigoVerificacao: string | null;
+                                link: string | null;
+                                pdfArquivoId: string | null;
+                                xmlArquivoId: string | null;
+                                /** Format: date-time */
+                                registradaEm: string;
+                            } | null;
                             acoesPermitidas: ("pagar" | "cancelar")[];
                         };
                     };
@@ -5607,6 +5744,17 @@ export interface operations {
                             geradaAutomaticamente: boolean;
                             /** Format: date-time */
                             criadaEm: string;
+                            notaFiscal: {
+                                numero: string;
+                                /** Format: date */
+                                emitidaEm: string;
+                                codigoVerificacao: string | null;
+                                link: string | null;
+                                pdfArquivoId: string | null;
+                                xmlArquivoId: string | null;
+                                /** Format: date-time */
+                                registradaEm: string;
+                            } | null;
                             acoesPermitidas: ("pagar" | "cancelar")[];
                         };
                     };
@@ -5730,6 +5878,17 @@ export interface operations {
                             geradaAutomaticamente: boolean;
                             /** Format: date-time */
                             criadaEm: string;
+                            notaFiscal: {
+                                numero: string;
+                                /** Format: date */
+                                emitidaEm: string;
+                                codigoVerificacao: string | null;
+                                link: string | null;
+                                pdfArquivoId: string | null;
+                                xmlArquivoId: string | null;
+                                /** Format: date-time */
+                                registradaEm: string;
+                            } | null;
                             acoesPermitidas: ("pagar" | "cancelar")[];
                         };
                     };
@@ -5878,6 +6037,17 @@ export interface operations {
                                 geradaAutomaticamente: boolean;
                                 /** Format: date-time */
                                 criadaEm: string;
+                                notaFiscal: {
+                                    numero: string;
+                                    /** Format: date */
+                                    emitidaEm: string;
+                                    codigoVerificacao: string | null;
+                                    link: string | null;
+                                    pdfArquivoId: string | null;
+                                    xmlArquivoId: string | null;
+                                    /** Format: date-time */
+                                    registradaEm: string;
+                                } | null;
                                 acoesPermitidas: ("pagar" | "cancelar")[];
                             }[];
                             aviso: {
@@ -15681,7 +15851,7 @@ export interface operations {
                 "application/json": {
                     componentes: {
                         /** @enum {string} */
-                        tipo: "fixo_periodo" | "por_entrega" | "por_km" | "faixa_distancia" | "parada_adicional" | "retorno" | "espera" | "adicional_horario" | "adicional_dia" | "adicional_condicao" | "bonus_meta" | "garantia_minima" | "desconto" | "cancelamento" | "mensalidade";
+                        tipo: "fixo_periodo" | "por_entrega" | "por_km" | "faixa_distancia" | "parada_adicional" | "retorno" | "espera" | "adicional_horario" | "adicional_dia" | "adicional_condicao" | "bonus_meta" | "garantia_minima" | "desconto" | "cancelamento" | "mensalidade" | "percentual_cobranca";
                         nome: string;
                         parametros: {
                             [key: string]: components["schemas"]["Def6_schema0"];
@@ -18138,6 +18308,17 @@ export interface operations {
                             vencimento: string | null;
                             enviadaEm: string | null;
                             pagaEm: string | null;
+                            notaFiscal: {
+                                numero: string;
+                                /** Format: date */
+                                emitidaEm: string;
+                                codigoVerificacao: string | null;
+                                link: string | null;
+                                pdfArquivoId: string | null;
+                                xmlArquivoId: string | null;
+                                /** Format: date-time */
+                                registradaEm: string;
+                            } | null;
                             acoesPermitidas: ("fechar" | "enviar" | "pagar" | "cancelar")[];
                         }[];
                     };
@@ -18234,6 +18415,17 @@ export interface operations {
                                 vencimento: string | null;
                                 enviadaEm: string | null;
                                 pagaEm: string | null;
+                                notaFiscal: {
+                                    numero: string;
+                                    /** Format: date */
+                                    emitidaEm: string;
+                                    codigoVerificacao: string | null;
+                                    link: string | null;
+                                    pdfArquivoId: string | null;
+                                    xmlArquivoId: string | null;
+                                    /** Format: date-time */
+                                    registradaEm: string;
+                                } | null;
                                 acoesPermitidas: ("fechar" | "enviar" | "pagar" | "cancelar")[];
                             }[];
                             ignoradas: {
@@ -18324,6 +18516,17 @@ export interface operations {
                             vencimento: string | null;
                             enviadaEm: string | null;
                             pagaEm: string | null;
+                            notaFiscal: {
+                                numero: string;
+                                /** Format: date */
+                                emitidaEm: string;
+                                codigoVerificacao: string | null;
+                                link: string | null;
+                                pdfArquivoId: string | null;
+                                xmlArquivoId: string | null;
+                                /** Format: date-time */
+                                registradaEm: string;
+                            } | null;
                             acoesPermitidas: ("fechar" | "enviar" | "pagar" | "cancelar")[];
                             lancamentos: {
                                 /** Format: uuid */
@@ -18425,6 +18628,17 @@ export interface operations {
                             vencimento: string | null;
                             enviadaEm: string | null;
                             pagaEm: string | null;
+                            notaFiscal: {
+                                numero: string;
+                                /** Format: date */
+                                emitidaEm: string;
+                                codigoVerificacao: string | null;
+                                link: string | null;
+                                pdfArquivoId: string | null;
+                                xmlArquivoId: string | null;
+                                /** Format: date-time */
+                                registradaEm: string;
+                            } | null;
                             acoesPermitidas: ("fechar" | "enviar" | "pagar" | "cancelar")[];
                             lancamentos: {
                                 /** Format: uuid */
@@ -18535,6 +18749,17 @@ export interface operations {
                             vencimento: string | null;
                             enviadaEm: string | null;
                             pagaEm: string | null;
+                            notaFiscal: {
+                                numero: string;
+                                /** Format: date */
+                                emitidaEm: string;
+                                codigoVerificacao: string | null;
+                                link: string | null;
+                                pdfArquivoId: string | null;
+                                xmlArquivoId: string | null;
+                                /** Format: date-time */
+                                registradaEm: string;
+                            } | null;
                             acoesPermitidas: ("fechar" | "enviar" | "pagar" | "cancelar")[];
                             lancamentos: {
                                 /** Format: uuid */
@@ -18645,6 +18870,17 @@ export interface operations {
                             vencimento: string | null;
                             enviadaEm: string | null;
                             pagaEm: string | null;
+                            notaFiscal: {
+                                numero: string;
+                                /** Format: date */
+                                emitidaEm: string;
+                                codigoVerificacao: string | null;
+                                link: string | null;
+                                pdfArquivoId: string | null;
+                                xmlArquivoId: string | null;
+                                /** Format: date-time */
+                                registradaEm: string;
+                            } | null;
                             acoesPermitidas: ("fechar" | "enviar" | "pagar" | "cancelar")[];
                             lancamentos: {
                                 /** Format: uuid */
@@ -18755,6 +18991,17 @@ export interface operations {
                             vencimento: string | null;
                             enviadaEm: string | null;
                             pagaEm: string | null;
+                            notaFiscal: {
+                                numero: string;
+                                /** Format: date */
+                                emitidaEm: string;
+                                codigoVerificacao: string | null;
+                                link: string | null;
+                                pdfArquivoId: string | null;
+                                xmlArquivoId: string | null;
+                                /** Format: date-time */
+                                registradaEm: string;
+                            } | null;
                             acoesPermitidas: ("fechar" | "enviar" | "pagar" | "cancelar")[];
                             lancamentos: {
                                 /** Format: uuid */
@@ -18812,6 +19059,682 @@ export interface operations {
             };
             /** @description Erro interno; o detalhe fica no log com o requestId */
             500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+        };
+    };
+    "faturas.notaFiscal.registrar": {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Chave única por ação (8 a 100 caracteres). Repetir com o mesmo corpo devolve a mesma resposta. */
+                "Idempotency-Key": string;
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    numero: string;
+                    /** Format: date */
+                    emitidaEm: string;
+                    codigoVerificacao?: string;
+                    /** Format: uri */
+                    link?: string;
+                    /** Format: uuid */
+                    pdfArquivoId?: string;
+                    /** Format: uuid */
+                    xmlArquivoId?: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Sucesso */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        dados: {
+                            numero: string;
+                            /** Format: date */
+                            emitidaEm: string;
+                            codigoVerificacao: string | null;
+                            link: string | null;
+                            pdfArquivoId: string | null;
+                            xmlArquivoId: string | null;
+                            /** Format: date-time */
+                            registradaEm: string;
+                        } | null;
+                    };
+                };
+            };
+            /** @description Dados inválidos (validacao, json_invalido) */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+            /** @description Sem sessão, credenciais erradas ou token vencido (token_expirado) */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+            /** @description Sem permissão (sem_permissao, csrf_invalido, sem_organizacao_ativa) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+            /** @description Não encontrado, ou de outra organização */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+            /** @description Regra de negócio recusou (regra_violada e códigos específicos) */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+            /** @description Erro interno; o detalhe fica no log com o requestId */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+        };
+    };
+    "faturas.notaFiscal.remover": {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Chave única por ação (8 a 100 caracteres). Repetir com o mesmo corpo devolve a mesma resposta. */
+                "Idempotency-Key": string;
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Sucesso */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        dados: {
+                            numero: string;
+                            /** Format: date */
+                            emitidaEm: string;
+                            codigoVerificacao: string | null;
+                            link: string | null;
+                            pdfArquivoId: string | null;
+                            xmlArquivoId: string | null;
+                            /** Format: date-time */
+                            registradaEm: string;
+                        } | null;
+                    };
+                };
+            };
+            /** @description Sem sessão, credenciais erradas ou token vencido (token_expirado) */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+            /** @description Sem permissão (sem_permissao, csrf_invalido, sem_organizacao_ativa) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+            /** @description Não encontrado, ou de outra organização */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+            /** @description Regra de negócio recusou (regra_violada e códigos específicos) */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+            /** @description Erro interno; o detalhe fica no log com o requestId */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+        };
+    };
+    "plataforma.faturas.notaFiscal.registrar": {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Chave única por ação (8 a 100 caracteres). Repetir com o mesmo corpo devolve a mesma resposta. */
+                "Idempotency-Key": string;
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    numero: string;
+                    /** Format: date */
+                    emitidaEm: string;
+                    codigoVerificacao?: string;
+                    /** Format: uri */
+                    link?: string;
+                    /** Format: uuid */
+                    pdfArquivoId?: string;
+                    /** Format: uuid */
+                    xmlArquivoId?: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Sucesso */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        dados: {
+                            numero: string;
+                            /** Format: date */
+                            emitidaEm: string;
+                            codigoVerificacao: string | null;
+                            link: string | null;
+                            pdfArquivoId: string | null;
+                            xmlArquivoId: string | null;
+                            /** Format: date-time */
+                            registradaEm: string;
+                        } | null;
+                    };
+                };
+            };
+            /** @description Dados inválidos (validacao, json_invalido) */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+            /** @description Sem sessão, credenciais erradas ou token vencido (token_expirado) */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+            /** @description Sem permissão (sem_permissao, csrf_invalido, sem_organizacao_ativa) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+            /** @description Não encontrado, ou de outra organização */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+            /** @description Regra de negócio recusou (regra_violada e códigos específicos) */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+            /** @description Erro interno; o detalhe fica no log com o requestId */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+        };
+    };
+    "plataforma.faturas.notaFiscal.remover": {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Chave única por ação (8 a 100 caracteres). Repetir com o mesmo corpo devolve a mesma resposta. */
+                "Idempotency-Key": string;
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Sucesso */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        dados: {
+                            numero: string;
+                            /** Format: date */
+                            emitidaEm: string;
+                            codigoVerificacao: string | null;
+                            link: string | null;
+                            pdfArquivoId: string | null;
+                            xmlArquivoId: string | null;
+                            /** Format: date-time */
+                            registradaEm: string;
+                        } | null;
+                    };
+                };
+            };
+            /** @description Sem sessão, credenciais erradas ou token vencido (token_expirado) */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+            /** @description Sem permissão (sem_permissao, csrf_invalido, sem_organizacao_ativa) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+            /** @description Não encontrado, ou de outra organização */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+            /** @description Regra de negócio recusou (regra_violada e códigos específicos) */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+            /** @description Erro interno; o detalhe fica no log com o requestId */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+        };
+    };
+    "plataforma.faturas.notaFiscal.urlEnvio": {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Chave única por ação (8 a 100 caracteres). Repetir com o mesmo corpo devolve a mesma resposta. */
+                "Idempotency-Key": string;
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @enum {string} */
+                    mime: "application/pdf" | "application/xml" | "text/xml";
+                    tamanhoBytes: number;
+                };
+            };
+        };
+        responses: {
+            /** @description Sucesso */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        dados: {
+                            arquivo: {
+                                /** Format: uuid */
+                                id: string;
+                                /** @enum {string} */
+                                categoria: "documento_motoboy" | "comprovante_entrega" | "comprovante_recebimento" | "ocorrencia" | "comprovante_pagamento" | "nota_fiscal" | "outro";
+                                /** @enum {string} */
+                                mime: "image/jpeg" | "image/png" | "image/webp" | "image/heic" | "application/pdf" | "application/xml" | "text/xml";
+                                tamanhoBytes: number;
+                                confirmado: boolean;
+                                /** Format: date-time */
+                                criadoEm: string;
+                            };
+                            envio: {
+                                /** Format: uri */
+                                url: string;
+                                /** Format: date-time */
+                                expiraEm: string;
+                                /** @constant */
+                                metodo: "PUT";
+                                /** @description Mande exatamente estes cabeçalhos, com o arquivo no corpo */
+                                cabecalhos: {
+                                    [key: string]: string;
+                                };
+                            };
+                        };
+                    };
+                };
+            };
+            /** @description Dados inválidos (validacao, json_invalido) */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+            /** @description Sem sessão, credenciais erradas ou token vencido (token_expirado) */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+            /** @description Sem permissão (sem_permissao, csrf_invalido, sem_organizacao_ativa) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+            /** @description Não encontrado, ou de outra organização */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+            /** @description Regra de negócio recusou (regra_violada e códigos específicos) */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+            /** @description Erro interno; o detalhe fica no log com o requestId */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+            /** @description Erro */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+        };
+    };
+    "plataforma.faturas.notaFiscal.confirmar": {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Chave única por ação (8 a 100 caracteres). Repetir com o mesmo corpo devolve a mesma resposta. */
+                "Idempotency-Key": string;
+            };
+            path: {
+                id: string;
+                arquivoId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Sucesso */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        dados: {
+                            /** Format: uuid */
+                            id: string;
+                            /** @enum {string} */
+                            categoria: "documento_motoboy" | "comprovante_entrega" | "comprovante_recebimento" | "ocorrencia" | "comprovante_pagamento" | "nota_fiscal" | "outro";
+                            /** @enum {string} */
+                            mime: "image/jpeg" | "image/png" | "image/webp" | "image/heic" | "application/pdf" | "application/xml" | "text/xml";
+                            tamanhoBytes: number;
+                            confirmado: boolean;
+                            /** Format: date-time */
+                            criadoEm: string;
+                        };
+                    };
+                };
+            };
+            /** @description Sem sessão, credenciais erradas ou token vencido (token_expirado) */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+            /** @description Sem permissão (sem_permissao, csrf_invalido, sem_organizacao_ativa) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+            /** @description Não encontrado, ou de outra organização */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+            /** @description Regra de negócio recusou (regra_violada e códigos específicos) */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+            /** @description Erro interno; o detalhe fica no log com o requestId */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+            /** @description Erro */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+        };
+    };
+    "plataforma.faturas.notaFiscal.urlLeitura": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                arquivoId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Sucesso */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        dados: {
+                            /** Format: uri */
+                            url: string;
+                            /** Format: date-time */
+                            expiraEm: string;
+                        };
+                    };
+                };
+            };
+            /** @description Sem sessão, credenciais erradas ou token vencido (token_expirado) */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+            /** @description Sem permissão (sem_permissao, csrf_invalido, sem_organizacao_ativa) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+            /** @description Não encontrado, ou de outra organização */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+            /** @description Regra de negócio recusou (regra_violada e códigos específicos) */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+            /** @description Erro interno; o detalhe fica no log com o requestId */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+            /** @description Erro */
+            503: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -19114,9 +20037,9 @@ export interface operations {
             content: {
                 "application/json": {
                     /** @enum {string} */
-                    categoria: "documento_motoboy" | "comprovante_entrega" | "comprovante_recebimento" | "ocorrencia" | "comprovante_pagamento" | "outro";
+                    categoria: "documento_motoboy" | "comprovante_entrega" | "comprovante_recebimento" | "ocorrencia" | "comprovante_pagamento" | "nota_fiscal" | "outro";
                     /** @enum {string} */
-                    mime: "image/jpeg" | "image/png" | "image/webp" | "image/heic" | "application/pdf";
+                    mime: "image/jpeg" | "image/png" | "image/webp" | "image/heic" | "application/pdf" | "application/xml" | "text/xml";
                     tamanhoBytes: number;
                 };
             };
@@ -19134,9 +20057,9 @@ export interface operations {
                                 /** Format: uuid */
                                 id: string;
                                 /** @enum {string} */
-                                categoria: "documento_motoboy" | "comprovante_entrega" | "comprovante_recebimento" | "ocorrencia" | "comprovante_pagamento" | "outro";
+                                categoria: "documento_motoboy" | "comprovante_entrega" | "comprovante_recebimento" | "ocorrencia" | "comprovante_pagamento" | "nota_fiscal" | "outro";
                                 /** @enum {string} */
-                                mime: "image/jpeg" | "image/png" | "image/webp" | "image/heic" | "application/pdf";
+                                mime: "image/jpeg" | "image/png" | "image/webp" | "image/heic" | "application/pdf" | "application/xml" | "text/xml";
                                 tamanhoBytes: number;
                                 confirmado: boolean;
                                 /** Format: date-time */
@@ -19239,9 +20162,9 @@ export interface operations {
                             /** Format: uuid */
                             id: string;
                             /** @enum {string} */
-                            categoria: "documento_motoboy" | "comprovante_entrega" | "comprovante_recebimento" | "ocorrencia" | "comprovante_pagamento" | "outro";
+                            categoria: "documento_motoboy" | "comprovante_entrega" | "comprovante_recebimento" | "ocorrencia" | "comprovante_pagamento" | "nota_fiscal" | "outro";
                             /** @enum {string} */
-                            mime: "image/jpeg" | "image/png" | "image/webp" | "image/heic" | "application/pdf";
+                            mime: "image/jpeg" | "image/png" | "image/webp" | "image/heic" | "application/pdf" | "application/xml" | "text/xml";
                             tamanhoBytes: number;
                             confirmado: boolean;
                             /** Format: date-time */
@@ -19405,9 +20328,9 @@ export interface operations {
             content: {
                 "application/json": {
                     /** @enum {string} */
-                    categoria: "documento_motoboy" | "comprovante_entrega" | "comprovante_recebimento" | "ocorrencia" | "comprovante_pagamento" | "outro";
+                    categoria: "documento_motoboy" | "comprovante_entrega" | "comprovante_recebimento" | "ocorrencia" | "comprovante_pagamento" | "nota_fiscal" | "outro";
                     /** @enum {string} */
-                    mime: "image/jpeg" | "image/png" | "image/webp" | "image/heic" | "application/pdf";
+                    mime: "image/jpeg" | "image/png" | "image/webp" | "image/heic" | "application/pdf" | "application/xml" | "text/xml";
                     tamanhoBytes: number;
                 };
             };
@@ -19425,9 +20348,9 @@ export interface operations {
                                 /** Format: uuid */
                                 id: string;
                                 /** @enum {string} */
-                                categoria: "documento_motoboy" | "comprovante_entrega" | "comprovante_recebimento" | "ocorrencia" | "comprovante_pagamento" | "outro";
+                                categoria: "documento_motoboy" | "comprovante_entrega" | "comprovante_recebimento" | "ocorrencia" | "comprovante_pagamento" | "nota_fiscal" | "outro";
                                 /** @enum {string} */
-                                mime: "image/jpeg" | "image/png" | "image/webp" | "image/heic" | "application/pdf";
+                                mime: "image/jpeg" | "image/png" | "image/webp" | "image/heic" | "application/pdf" | "application/xml" | "text/xml";
                                 tamanhoBytes: number;
                                 confirmado: boolean;
                                 /** Format: date-time */
@@ -19541,9 +20464,9 @@ export interface operations {
                             /** Format: uuid */
                             id: string;
                             /** @enum {string} */
-                            categoria: "documento_motoboy" | "comprovante_entrega" | "comprovante_recebimento" | "ocorrencia" | "comprovante_pagamento" | "outro";
+                            categoria: "documento_motoboy" | "comprovante_entrega" | "comprovante_recebimento" | "ocorrencia" | "comprovante_pagamento" | "nota_fiscal" | "outro";
                             /** @enum {string} */
-                            mime: "image/jpeg" | "image/png" | "image/webp" | "image/heic" | "application/pdf";
+                            mime: "image/jpeg" | "image/png" | "image/webp" | "image/heic" | "application/pdf" | "application/xml" | "text/xml";
                             tamanhoBytes: number;
                             confirmado: boolean;
                             /** Format: date-time */
@@ -20982,6 +21905,110 @@ export interface operations {
                                 }[];
                             } | null;
                             caixa: null;
+                        };
+                    };
+                };
+            };
+            /** @description Dados inválidos (validacao, json_invalido) */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+            /** @description Sem sessão, credenciais erradas ou token vencido (token_expirado) */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+            /** @description Sem permissão (sem_permissao, csrf_invalido, sem_organizacao_ativa) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+            /** @description X-App-Version abaixo da mínima */
+            426: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+            /** @description Erro interno; o detalhe fica no log com o requestId */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+        };
+    };
+    "appMotoboy.historico": {
+        parameters: {
+            query?: {
+                de?: string;
+                ate?: string;
+            };
+            header?: {
+                /** @description Versão do app (x.y.z). Abaixo da mínima, 426 app_desatualizado com detalhes.versaoMinima. */
+                "X-App-Version"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Sucesso */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        dados: {
+                            /** Format: date */
+                            de: string;
+                            /** Format: date */
+                            ate: string;
+                            resumo: {
+                                entregas: number;
+                                entregues: number;
+                                devolvidas: number;
+                                canceladas: number;
+                                ganho: string;
+                            };
+                            entregas: {
+                                /** Format: uuid */
+                                id: string;
+                                codigo: string;
+                                /** @enum {string} */
+                                status: "entregue" | "devolvida" | "cancelada" | "extraviada";
+                                /** Format: date-time */
+                                finalizadaEm: string;
+                                cliente: string;
+                                bairro: string | null;
+                                restaurante: string;
+                                rotaCodigo: string | null;
+                                pagamento: {
+                                    forma: string;
+                                    valorACobrar: string;
+                                    recebimentoStatus: string;
+                                };
+                                ganho: string | null;
+                            }[];
                         };
                     };
                 };

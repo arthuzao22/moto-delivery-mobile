@@ -7,6 +7,7 @@ import {
   PARA_O_NATIVEWIND,
   type PreferenciaDeTema,
 } from './preferencia-de-tema';
+import { CORES_DO_TEMA, type CoresDoTema } from './tema';
 
 interface Tema {
   readonly preferencia: PreferenciaDeTema;
@@ -53,6 +54,11 @@ export function ProvedorDeTema({ children }: { readonly children: ReactNode }): 
     [preferencia, colorScheme, carregado, escolher],
   );
   return <ContextoDoTema.Provider value={valor}>{children}</ContextoDoTema.Provider>;
+}
+
+/** As cores de ícone do tema na tela agora (ícone não lê classe do Tailwind). */
+export function useCores(): CoresDoTema {
+  return CORES_DO_TEMA[useTema().esquema];
 }
 
 export function useTema(): Tema {

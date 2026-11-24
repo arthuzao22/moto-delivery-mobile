@@ -16,7 +16,12 @@ export default function LayoutDoApp(): ReactNode {
   useFilaEmSegundoPlano();
   return (
     <Stack screenOptions={{ headerShown: false }}>
-      <Stack.Screen name="index" />
+      {/* As abas trocam sem animação, como numa barra de abas (documento 02 §1). */}
+      <Stack.Screen name="index" options={{ animation: 'none' }} />
+      <Stack.Screen name="entregas" options={{ animation: 'none' }} />
+      <Stack.Screen name="caixa" options={{ animation: 'none' }} />
+      <Stack.Screen name="extrato" options={{ animation: 'none' }} />
+      <Stack.Screen name="perfil" options={{ animation: 'none' }} />
       <Stack.Screen name="entrega/[id]/pagamento" options={{ presentation: 'modal' }} />
       <Stack.Screen name="ocorrencia" options={{ presentation: 'modal' }} />
       <Stack.Screen name="entrega/[id]/recusa" options={{ presentation: 'modal' }} />

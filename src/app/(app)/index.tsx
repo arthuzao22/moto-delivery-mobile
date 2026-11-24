@@ -2,7 +2,6 @@ import { useEffect, type ReactNode } from 'react';
 import { useRouter } from 'expo-router';
 import { Linking, ScrollView, View } from 'react-native';
 import { ehErroDaApi } from '@/api/erro-da-api';
-import { useEu } from '@/api/eu';
 import {
   PermissaoDeLocalizacao,
   useAcoesDoTurno,
@@ -10,17 +9,20 @@ import {
   type Inicio as DadosDoInicio,
 } from '@/api/turno';
 import { AvisoDeConflito } from '@/components/app/aviso-de-sinal';
+import { TelaDeAba } from '@/components/app/barra-de-abas';
 import { BarraDeAcao } from '@/components/app/barra-de-acao';
 import { CartaoDeNotificacoes } from '@/components/app/cartao-de-notificacoes';
 import { DeslizarParaConfirmar } from '@/components/app/deslizar-para-confirmar';
+import { CabecalhoDoDia } from '@/components/app/inicio/cabecalho-do-dia';
+import { MetricasDoDia } from '@/components/app/inicio/metricas-do-dia';
+import { SituacaoDoTurno, type EstadoDoTurno } from '@/components/app/inicio/situacao-do-turno';
 import { TelaDaRota } from '@/components/app/rota/tela-da-rota';
 import { FaixaDoTopo } from '@/components/app/faixa-do-topo';
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
 import { iniciarRastreamento, segundoPlanoDisponivel, situacaoDaPermissao } from '@/gps/rastreamento';
-import { useSessao } from '@/sessao/provedor-de-sessao';
 
-type Estado = 'sem_turno' | 'disponivel' | 'pausa' | 'em_rota';
+type Estado = EstadoDoTurno;
 
 /** O estado da tela sai do /app/inicio (documento 02 §2); nada aqui guarda estado próprio. */
 function estadoDo(inicio: DadosDoInicio): Estado {
@@ -52,26 +54,27 @@ export default function Inicio(): ReactNode {
   const rota = inicio.data?.rotaAtiva ?? null;
   if (estado === 'em_rota' && rota !== null) {
     return (
-      <View className="flex-1 bg-background">
+      <TelaDeAba>
         <FaixaDoTopo titulo="Moto Delivery" />
         <View className="px-4 pt-4 empty:hidden">
           <AvisoDeConflito />
         </View>
         <TelaDaRota rota={rota} />
-      </View>
+      </TelaDeAba>
     );
   }
   return (
-    <View className="flex-1 bg-background">
+    <TelaDeAba>
       <FaixaDoTopo titulo="Moto Delivery" />
       <ScrollView contentContainerClassName="gap-4 px-4 py-6">
         <AvisoDeConflito />
-        <Saudacao />
+        <CabecalhoDoDia />
+        <MetricasDoDia />
         <Conteudo consulta={inicio} estado={estado} />
         <CartaoDeNotificacoes />
       </ScrollView>
-      {estado === null ? null : <Acoes estado={estado} />}
-    </View>
+      {estado === null || estado === 'em_rota' ? null : <Acoes estado={estado} />}
+    </TelaDeAba>
   );
 }
 
@@ -85,24 +88,6 @@ function useGpsDoTurnoAberto(turnoAberto: boolean): void {
     void religar().catch(() => undefined);
   }, [turnoAberto]);
 }
-
-function Saudacao(): ReactNode {
-  const eu = useEu();
-  const nome = eu.data?.usuario.nome.split(' ')[0];
-  return (
-    <View className="gap-1">
-      <Text variante="titulo">{nome === undefined ? 'Olá!' : `Olá, ${nome}!`}</Text>
-      <Text variante="secundario">{eu.data?.organizacaoAtiva?.nome ?? ' '}</Text>
-    </View>
-  );
-}
-
-const SITUACAO: Readonly<Record<Estado, { titulo: string; texto: string }>> = {
-  sem_turno: { titulo: 'Fora do turno', texto: 'Inicie o turno para receber ofertas.' },
-  disponivel: { titulo: 'Aguardando ofertas', texto: 'Quando chegar uma rota, o celular avisa.' },
-  pausa: { titulo: 'Em pausa', texto: 'Você não recebe ofertas enquanto estiver em pausa.' },
-  em_rota: { titulo: 'Em rota', texto: 'Você está com uma rota em andamento.' },
-};
 
 function Conteudo({
   consulta,
@@ -122,23 +107,24 @@ function Conteudo({
       </Cartao>
     );
   }
-  const { titulo, texto } = SITUACAO[estado];
-  const aviso =
-    estado !== 'sem_turno' && !segundoPlanoDisponivel()
-      ? ' No Expo Go, o GPS só funciona com o app aberto.'
-      : '';
+  const turno = consulta.data?.turno ?? null;
   const oferta = consulta.data?.ofertas[0];
   return (
     <>
       {oferta === undefined ? null : <OfertaAberta id={oferta.id} paradas={oferta.paradas.length} />}
-      <Cartao titulo={titulo} texto={`${texto}${aviso}`} />
+      <SituacaoDoTurno
+        estado={estado}
+        abertoEm={turno !== null && turno.status === 'aberto' ? turno.abertoEm : null}
+        {...(estado !== 'sem_turno' && !segundoPlanoDisponivel()
+          ? { aviso: 'No Expo Go, o GPS só funciona com o app aberto.' }
+          : {})}
+      />
     </>
   );
 }
 
 function Acoes({ estado }: { readonly estado: Estado }): ReactNode {
   const { abrir, disponibilidade, encerrar } = useAcoesDoTurno();
-  const { sair } = useSessao();
   const ocupado = abrir.isPending || disponibilidade.isPending || encerrar.isPending;
   const erro = mensagemDoErro(abrir.error ?? disponibilidade.error ?? encerrar.error);
   return (
@@ -148,9 +134,6 @@ function Acoes({ estado }: { readonly estado: Estado }): ReactNode {
         <>
           <Button disabled={ocupado} onPress={() => abrir.mutate()}>
             <Text>{abrir.isPending ? 'Abrindo…' : 'Iniciar turno'}</Text>
-          </Button>
-          <Button variante="fantasma" disabled={ocupado} onPress={() => void sair()}>
-            <Text>Sair</Text>
           </Button>
         </>
       ) : null}
@@ -162,12 +145,6 @@ function Acoes({ estado }: { readonly estado: Estado }): ReactNode {
       {estado === 'pausa' ? (
         <Button disabled={ocupado} onPress={() => disponibilidade.mutate('disponivel')}>
           <Text>Voltar a receber ofertas</Text>
-        </Button>
-      ) : null}
-      {estado === 'em_rota' ? (
-        // Até a aba Perfil existir (documento 02 §1), o sair fica aqui também.
-        <Button variante="fantasma" disabled={ocupado} onPress={() => void sair()}>
-          <Text>Sair</Text>
         </Button>
       ) : null}
       {estado === 'disponivel' || estado === 'pausa' ? (

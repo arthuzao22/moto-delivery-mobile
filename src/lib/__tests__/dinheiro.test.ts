@@ -6,6 +6,7 @@ describe('dinheiro como texto', () => {
     expect(formatarReais('25.90')).toBe('R$ 25,90');
     expect(formatarReais('1234567.05')).toBe('R$ 1.234.567,05');
     expect(formatarReais('0.00')).toBe('R$ 0,00');
+    expect(formatarReais('-5.00')).toBe('-R$ 5,00');
   });
 
   it('monta a string da API a partir do que foi digitado, sem fazer conta', () => {

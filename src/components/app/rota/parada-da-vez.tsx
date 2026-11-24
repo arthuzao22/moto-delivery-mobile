@@ -1,18 +1,33 @@
 import { useRouter } from 'expo-router';
+import {
+  AlertTriangle,
+  Banknote,
+  CheckCircle2,
+  CreditCard,
+  MapPin,
+  MessageSquareText,
+  type LucideIcon,
+} from 'lucide-react-native';
 import type { ReactNode } from 'react';
 import { Linking, ScrollView, View } from 'react-native';
 import { useAcoesDaRota, type Parada, type RotaAtiva } from '@/api/rota';
 import { BarraDeAcao } from '@/components/app/barra-de-acao';
 import { DeslizarParaConfirmar } from '@/components/app/deslizar-para-confirmar';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
 import { Text } from '@/components/ui/text';
 import { formatarReais } from '@/lib/dinheiro';
+import { aparenciaDoEstado } from '@/lib/estados-da-entrega';
+import { useCores } from '@/lib/provedor-de-tema';
 import { linkDoDiscador, linkDoWhatsapp } from '@/lib/navegacao';
 import { paradaAtual, progresso } from '@/lib/parada-atual';
 import { BotoesDeNavegacao } from './botoes-de-navegacao';
 import { ProgressoDasParadas } from './progresso-das-paradas';
 import { SituacaoDaPorta } from './situacao-da-porta';
 import { AvisarACentral, ErroDaAcao } from './acoes-comuns';
+
+const TAMANHO_DO_ICONE = 18;
 
 const FORMA_PREVISTA: Readonly<Record<string, string>> = {
   pago_online: 'Pago online',
@@ -61,34 +76,67 @@ export function ParadaDaVez({ rota }: { readonly rota: RotaAtiva }): ReactNode {
 }
 
 function CartaoDaParada({ parada }: { readonly parada: Parada }): ReactNode {
+  const cores = useCores();
   const extras = [parada.complemento, parada.referencia].filter((texto): texto is string => Boolean(texto));
+  const estado = aparenciaDoEstado(parada.status);
   return (
-    <View className="gap-1 rounded-2xl border border-border bg-card p-4">
-      <Text variante="titulo">{parada.cliente}</Text>
-      <Text>{parada.destino}</Text>
-      {extras.length > 0 ? <Text variante="secundario">{extras.join(' · ')}</Text> : null}
-      {parada.observacoes ? <Text variante="secundario">{`Obs.: ${parada.observacoes}`}</Text> : null}
-    </View>
+    <Card className="gap-3 p-4">
+      <View className="flex-row items-start justify-between gap-3">
+        <Text variante="titulo" className="flex-1">
+          {parada.cliente}
+        </Text>
+        <Badge rotulo={estado.rotulo} variante={estado.variante} icone={estado.icone} />
+      </View>
+      <View className="flex-row gap-3">
+        <MapPin color={cores.brandText} size={TAMANHO_DO_ICONE} strokeWidth={2} />
+        <View className="flex-1 gap-0.5">
+          <Text>{parada.destino}</Text>
+          {extras.length > 0 ? <Text variante="secundario">{extras.join(' · ')}</Text> : null}
+        </View>
+      </View>
+      {parada.observacoes ? (
+        <View className="flex-row gap-3 rounded-xl bg-secondary p-3">
+          <MessageSquareText color={cores.muted} size={TAMANHO_DO_ICONE} strokeWidth={2} />
+          <Text variante="secundario" className="flex-1">
+            {parada.observacoes}
+          </Text>
+        </View>
+      ) : null}
+    </Card>
   );
 }
 
 /** Valores prontos da API: o app não calcula troco nem total (documento 04 §2.8). */
 function Pagamento({ parada }: { readonly parada: Parada }): ReactNode {
   const { forma, valorACobrar, trocoNecessario, maquininhaDe, recebimentoStatus } = parada.pagamento;
-  if (forma === 'pago_online') return <Aviso texto="Pago online: não há nada a receber." neutro />;
+  if (forma === 'pago_online') {
+    return <Aviso icone={CreditCard} texto="Pago online: não há nada a receber." neutro />;
+  }
   return (
-    <View className="gap-1 rounded-2xl border border-border bg-card p-4">
-      <Text variante="secundario">{FORMA_PREVISTA[forma] ?? forma}</Text>
+    <Card className="gap-2 p-4">
+      <View className="flex-row items-center justify-between">
+        <Text variante="eyebrow">A receber</Text>
+        <Badge rotulo={FORMA_PREVISTA[forma] ?? forma} icone={Banknote} />
+      </View>
       <Text variante="valor">{formatarReais(valorACobrar)}</Text>
-      {trocoNecessario === null ? null : <Text>{`Troco: ${formatarReais(trocoNecessario)}`}</Text>}
+      {trocoNecessario === null ? null : (
+        <View className="flex-row items-center justify-between rounded-xl bg-attention/10 px-3 py-2">
+          <Text className="font-semibold text-brand-text">Leve de troco</Text>
+          <Text className="font-semibold tabular-nums text-brand-text">{formatarReais(trocoNecessario)}</Text>
+        </View>
+      )}
       {maquininhaDe === null ? null : (
         <Text variante="secundario">{MAQUININHA[maquininhaDe] ?? maquininhaDe}</Text>
       )}
-      {recebimentoStatus === 'recebido' ? <Text variante="secundario">Pagamento registrado.</Text> : null}
+      {recebimentoStatus === 'recebido' ? <Badge rotulo="Pagamento registrado" icone={CheckCircle2} /> : null}
       {recebimentoStatus === 'divergente' ? (
-        <Text className="text-destructive">Pagamento diferente do previsto: a central vai conferir.</Text>
+        <Badge
+          rotulo="Diferente do previsto: a central vai conferir"
+          variante="destrutivo"
+          icone={AlertTriangle}
+        />
       ) : null}
-    </View>
+    </Card>
   );
 }
 
@@ -175,14 +223,19 @@ function AcoesDaParada({ parada }: { readonly parada: Parada }): ReactNode {
   );
 }
 
-function Aviso({ texto, neutro = false }: { readonly texto: string; readonly neutro?: boolean }): ReactNode {
+function Aviso(props: {
+  readonly texto: string;
+  readonly icone?: LucideIcon;
+  readonly neutro?: boolean;
+}): ReactNode {
+  const { texto, icone: Icone = AlertTriangle, neutro = false } = props;
+  const cores = useCores();
   return (
-    <View
-      className={
-        neutro ? 'rounded-2xl border border-border bg-card p-4' : 'rounded-2xl border border-attention p-4'
-      }
-    >
-      <Text variante={neutro ? 'secundario' : 'corpo'}>{texto}</Text>
-    </View>
+    <Card className={neutro ? 'flex-row gap-3 p-4' : 'flex-row gap-3 border-attention/50 bg-attention/5 p-4'}>
+      <Icone color={neutro ? cores.muted : cores.brandText} size={TAMANHO_DO_ICONE} strokeWidth={2} />
+      <Text variante={neutro ? 'secundario' : 'corpo'} className="flex-1">
+        {texto}
+      </Text>
+    </Card>
   );
 }
