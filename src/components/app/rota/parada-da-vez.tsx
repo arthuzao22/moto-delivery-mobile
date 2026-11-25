@@ -190,6 +190,14 @@ function AcoesDaParada({ parada }: { readonly parada: Parada }): ReactNode {
           <Text>Registrar pagamento</Text>
         </Button>
       ) : null}
+      {pode('corrigir_recebimento') ? (
+        <Button
+          variante="contorno"
+          onPress={() => router.push({ pathname: '/entrega/[id]/pagamento', params: { id } })}
+        >
+          <Text>Corrigir pagamento</Text>
+        </Button>
+      ) : null}
       {pode('entregar') ? (
         <DeslizarParaConfirmar
           texto="Deslize para entregar"

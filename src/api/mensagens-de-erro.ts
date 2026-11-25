@@ -42,9 +42,13 @@ const MENSAGENS: Readonly<Record<string, string>> = {
   longe_do_destino: 'Você ainda está longe do endereço.',
   recebimento_pendente: 'Registre o pagamento primeiro.',
   recebimento_ja_registrado: 'O pagamento já foi registrado.',
+  recebimento_nao_registrado: 'Ainda não há pagamento registrado para corrigir.',
+  parada_concluida: 'Esta parada já terminou. Não dá mais para corrigir o pagamento.',
+  limite_de_correcoes: 'O pagamento já foi corrigido 2 vezes. Fale com a central.',
   comprovante_pendente: 'Envie o comprovante primeiro.',
   codigo_cliente_invalido: 'Código do cliente errado.',
   codigo_devolucao_invalido: 'Código de devolução errado.',
+  codigo_devolucao_bloqueado: 'Código bloqueado após 5 tentativas. Peça ao restaurante um novo código.',
   codigo_devolucao_nao_gerado: 'Peça ao restaurante para gerar o código.',
   // Arquivos
   arquivo_nao_enviado: 'A foto não terminou de enviar. Tente de novo.',
@@ -53,4 +57,22 @@ const MENSAGENS: Readonly<Record<string, string>> = {
 
 export function mensagemDoErro(codigo: string, reserva: string): string {
   return MENSAGENS[codigo] ?? reserva;
+}
+
+/**
+ * O código de devolução errado diz quantas tentativas restam (`detalhes.tentativasRestantes`); na
+ * última a API bloqueia o código e o restaurante precisa gerar outro.
+ */
+export function mensagemDaDevolucao(
+  codigo: string,
+  detalhes: Readonly<Record<string, unknown>>,
+  reserva: string,
+): string {
+  const { tentativasRestantes: restantes } = detalhes;
+  if (codigo !== 'codigo_devolucao_invalido' || typeof restantes !== 'number') {
+    return mensagemDoErro(codigo, reserva);
+  }
+  return restantes === 1
+    ? 'Código incorreto. Resta 1 tentativa.'
+    : `Código incorreto. Restam ${String(restantes)} tentativas.`;
 }

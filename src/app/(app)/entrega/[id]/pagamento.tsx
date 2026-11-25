@@ -59,32 +59,94 @@ function paraEnviar(partes: readonly ParteDigitada[]): ParteDoRecebimento[] | nu
 }
 
 /**
+ * Antes de enviar: uma parte só com valor diferente do previsto pede confirmação; várias partes
+ * pedem para conferir a soma (o app não soma: quem confere é a API). Null: segue sem perguntar.
+ */
+function avisoAntesDeEnviar(itens: readonly ParteDoRecebimento[], previsto: string): string | null {
+  const [unica] = itens;
+  const reais = formatarReais(previsto);
+  if (itens.length === 1 && unica?.valor === previsto) return null;
+  return itens.length === 1
+    ? `O valor é diferente do previsto (${reais}). Confirmar?`
+    : `Confira se as partes somam o previsto (${reais}). Confirmar?`;
+}
+
+/**
  * Registrar o pagamento na porta (documento 04 M4): até 4 partes. O app não soma: a API confere
- * com o previsto e, se for diferente, avisa a central como divergência.
+ * com o previsto e, se for diferente, avisa a central como divergência. Com `corrigir_recebimento`
+ * em `acoesPermitidas` (já registrado e a parada ainda aberta), a mesma tela corrige o registro;
+ * o app não recebe o que foi registrado, então começa do previsto.
  */
 export default function TelaDePagamento(): ReactNode {
   const { id } = useLocalSearchParams<{ id: string }>();
   const parada = useInicio().data?.rotaAtiva?.paradas.find((item) => item.entregaId === id) ?? null;
   if (parada === null) return <Fundo />;
-  return <Formulario parada={parada} />;
+  const modo = modoDaTela(parada);
+  if (modo === null) return <SemPagamento />;
+  return <Formulario parada={parada} modo={modo} />;
 }
 
-function Formulario({ parada }: { readonly parada: Parada }): ReactNode {
+type Modo = 'registrar' | 'corrigir';
+
+/** Pelas ações da API: registrar enquanto há a receber; corrigir depois, até a parada terminar. */
+function modoDaTela(parada: Parada): Modo | null {
+  if (parada.acoesPermitidas.includes('recebimentos')) return 'registrar';
+  if (parada.acoesPermitidas.includes('corrigir_recebimento')) return 'corrigir';
+  return null;
+}
+
+function SemPagamento(): ReactNode {
   const router = useRouter();
-  const { receber } = useAcoesDaRota();
+  return (
+    <Fundo>
+      <View className="flex-1 gap-2 px-4 py-6">
+        <Text variante="titulo">Nada a registrar agora</Text>
+        <Text variante="secundario">
+          O pagamento desta parada não pode mais ser registrado nem corrigido.
+        </Text>
+      </View>
+      <BarraDeAcao>
+        <Button variante="fantasma" onPress={() => router.back()}>
+          <Text>Voltar</Text>
+        </Button>
+      </BarraDeAcao>
+    </Fundo>
+  );
+}
+
+function Formulario({ parada, modo }: { readonly parada: Parada; readonly modo: Modo }): ReactNode {
+  const router = useRouter();
+  const { receber, corrigirRecebimento } = useAcoesDaRota();
+  const acao = modo === 'corrigir' ? corrigirRecebimento : receber;
   const [partes, setPartes] = useState(() => partesIniciais(parada));
+  const [aviso, setAviso] = useState<string | null>(null);
   const itens = paraEnviar(partes);
-  const mudar = (indice: number, mudanca: Partial<ParteDigitada>): void =>
+  const mudar = (indice: number, mudanca: Partial<ParteDigitada>): void => {
+    setAviso(null);
     setPartes((atuais) => atuais.map((parte, i) => (i === indice ? { ...parte, ...mudanca } : parte)));
+  };
+  const mandar = (): void => {
+    if (itens === null) return;
+    acao.mutate({ entregaId: parada.entregaId, itens }, { onSuccess: () => router.back() });
+  };
   const enviar = (): void => {
     if (itens === null) return;
-    receber.mutate({ entregaId: parada.entregaId, itens }, { onSuccess: () => router.back() });
+    const texto = avisoAntesDeEnviar(itens, parada.pagamento.valorACobrar);
+    if (texto === null) mandar();
+    else setAviso(texto);
   };
+  const corrigindo = modo === 'corrigir';
+  const rotuloDoEnvio = corrigindo ? 'Corrigir pagamento' : 'Registrar pagamento';
   return (
     <Fundo>
       <ScrollView contentContainerClassName="gap-4 px-4 py-6" keyboardShouldPersistTaps="handled">
-        <Text variante="eyebrow">{`Pagamento · ${parada.codigo}`}</Text>
+        <Text variante="eyebrow">{`${corrigindo ? 'Corrigir pagamento' : 'Pagamento'} · ${parada.codigo}`}</Text>
         <Text variante="titulo">{`A receber: ${formatarReais(parada.pagamento.valorACobrar)}`}</Text>
+        {corrigindo ? (
+          <Text variante="secundario">
+            Informe de novo o que o cliente pagou. O registro anterior é substituído.
+          </Text>
+        ) : null}
         {partes.map((parte, indice) => (
           <Parte
             key={indice}
@@ -96,20 +158,42 @@ function Formulario({ parada }: { readonly parada: Parada }): ReactNode {
         {partes.length < MAXIMO_DE_PARTES ? (
           <Button
             variante="contorno"
-            onPress={() => setPartes((atuais) => [...atuais, { forma: 'pix', valor: '', troco: '' }])}
+            onPress={() => {
+              setAviso(null);
+              setPartes((atuais) => [...atuais, { forma: 'pix', valor: '', troco: '' }]);
+            }}
           >
             <Text>Dividir em outra forma</Text>
           </Button>
         ) : null}
       </ScrollView>
       <BarraDeAcao>
-        <ErroDaAcao erro={receber.error} />
-        <Button disabled={itens === null || receber.isPending} onPress={enviar}>
-          <Text>{receber.isPending ? 'Registrando…' : 'Registrar pagamento'}</Text>
-        </Button>
-        <Button variante="fantasma" disabled={receber.isPending} onPress={() => router.back()}>
-          <Text>Voltar</Text>
-        </Button>
+        <ErroDaAcao erro={acao.error} />
+        {aviso === null ? (
+          <>
+            <Button disabled={itens === null || acao.isPending} onPress={enviar}>
+              <Text>{acao.isPending ? 'Enviando…' : rotuloDoEnvio}</Text>
+            </Button>
+            <Button variante="fantasma" disabled={acao.isPending} onPress={() => router.back()}>
+              <Text>Voltar</Text>
+            </Button>
+          </>
+        ) : (
+          <>
+            <View
+              accessibilityLiveRegion="polite"
+              className="rounded-2xl border border-attention/50 bg-attention/5 p-4"
+            >
+              <Text>{aviso}</Text>
+            </View>
+            <Button disabled={acao.isPending} onPress={mandar}>
+              <Text>{acao.isPending ? 'Enviando…' : 'Confirmar valor'}</Text>
+            </Button>
+            <Button variante="fantasma" disabled={acao.isPending} onPress={() => setAviso(null)}>
+              <Text>Revisar</Text>
+            </Button>
+          </>
+        )}
       </BarraDeAcao>
     </Fundo>
   );

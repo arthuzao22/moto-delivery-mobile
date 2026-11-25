@@ -86,11 +86,18 @@ function avancarParada(parada: Parada, tipo: AcaoDeCampo['tipo']): Parada {
   return parada;
 }
 
-/** Na porta: pagamento primeiro (se houver a receber) e entregar só com comprovante em dia. */
+const JA_RECEBIDO: readonly string[] = ['recebido', 'divergente'];
+
+/**
+ * Na porta: pagamento primeiro (se houver a receber), correção enquanto a parada não termina e
+ * entregar só com comprovante em dia.
+ */
 function naPorta(parada: Parada): AcaoDaParada[] {
-  const aReceber = parada.pagamento.recebimentoStatus === 'a_receber';
+  const { recebimentoStatus } = parada.pagamento;
+  const aReceber = recebimentoStatus === 'a_receber';
   const acoes: AcaoDaParada[] = [...NA_PORTA];
   if (aReceber) acoes.push('recebimentos');
+  if (JA_RECEBIDO.includes(recebimentoStatus)) acoes.push('corrigir_recebimento');
   if (!aReceber && !parada.comprovante.pendente) acoes.push('entregar');
   return acoes;
 }

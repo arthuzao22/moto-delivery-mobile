@@ -37,7 +37,8 @@ function naParada(
   passo: { rota: string; rotulo: string; corpo: object; avanco: PedidoDeCampo['avanco'] },
 ): PedidoDeCampo {
   return {
-    prefixo: passo.rota,
+    // A chave não leva barra: "recebimentos/corrigir" vira "recebimentos-corrigir".
+    prefixo: passo.rota.replaceAll('/', '-'),
     caminho: `/app/entregas/${entregaId}/${passo.rota}`,
     corpo: passo.corpo,
     grupo: 'rota',
@@ -108,6 +109,19 @@ export function useAcoesDaRota() {
       avanco: { tipo: 'recebimento', entregaId: entrada.entregaId },
     }),
   );
+  /** Corrige o pagamento já registrado enquanto a parada não terminou (mesmo corpo do registrar). */
+  const corrigirRecebimento = useAcaoDeCampo(
+    async (entrada: { entregaId: string; itens: ParteDoRecebimento[] }) =>
+      naParada(entrada.entregaId, {
+        rota: 'recebimentos/corrigir',
+        rotulo: 'Correção do pagamento',
+        corpo: {
+          itens: entrada.itens,
+          ...(await momento()),
+        } satisfies Corpo<'/app/entregas/{id}/recebimentos/corrigir'>,
+        avanco: { tipo: 'recebimento', entregaId: entrada.entregaId },
+      }),
+  );
   const entregar = useAcaoDeCampo(async (entregaId: string) =>
     naParada(entregaId, {
       rota: 'entregar',
@@ -165,6 +179,7 @@ export function useAcoesDaRota() {
     chegar,
     contato,
     receber,
+    corrigirRecebimento,
     entregar,
     ocorrencia,
     ausente,

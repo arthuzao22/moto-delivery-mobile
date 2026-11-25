@@ -99,6 +99,22 @@ describe('avanço otimista sem sinal', () => {
     expect(daParada(depois, 'a')?.acoesPermitidas).not.toContain('entregar');
     const paga = avancar(depois, { tipo: 'recebimento', entregaId: 'a' });
     expect(daParada(paga, 'a')?.acoesPermitidas).toContain('entregar');
+    expect(daParada(paga, 'a')?.acoesPermitidas).toContain('corrigir_recebimento');
+    expect(daParada(paga, 'a')?.acoesPermitidas).not.toContain('recebimentos');
+  });
+
+  it('pago online não oferece correção de pagamento na porta', () => {
+    const depois = avancar(inicio([parada('a', 'a_caminho', 1)]), { tipo: 'cheguei', entregaId: 'a' });
+    expect(daParada(depois, 'a')?.acoesPermitidas).not.toContain('corrigir_recebimento');
+  });
+
+  it('entregar tira a correção junto com as outras ações da parada', () => {
+    const paga = avancar(
+      avancar(inicio([parada('a', 'a_caminho', 1, true)]), { tipo: 'cheguei', entregaId: 'a' }),
+      { tipo: 'recebimento', entregaId: 'a' },
+    );
+    const entregue = avancar(paga, { tipo: 'entregar', entregaId: 'a' });
+    expect(daParada(entregue, 'a')?.acoesPermitidas).toEqual([]);
   });
 
   it('entregar passa para a próxima parada coletada, pela ordem', () => {

@@ -241,6 +241,24 @@ export interface paths {
         patch: operations["organizacao.atualizarConfiguracoes"];
         trace?: never;
     };
+    "/organizacao/frota-propria": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** A frota própria do restaurante: a empresa interna e a parceria com ela (nulas se nunca ativou) */
+        get: operations["organizacao.frotaPropria"];
+        put?: never;
+        /** Ativa a frota própria: cria a empresa interna (quem ativa vira admin_empresa nela, enquanto for admin do restaurante) e a parceria já ativa; repetir só cria o que falta (vínculo que já existe não muda; parceria suspensa se reativa em /parcerias/{id}/reativar). Só o admin do restaurante (403 so_admin_restaurante); 422 so_restaurante, restaurante_inativo, frota_propria_suspensa */
+        post: operations["organizacao.ativarFrotaPropria"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/plataforma/organizacoes": {
         parameters: {
             query?: never;
@@ -1294,7 +1312,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** A rota dos pedidos do restaurante, com o status da oferta */
+        /** A rota dos pedidos do restaurante: status da oferta, motoboy que está com ela e as últimas recusas e expirações */
         get: operations["distribuicao.obterRota"];
         put?: never;
         post?: never;
@@ -1568,7 +1586,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Devolução com o código que o restaurante gerou no painel (422 codigo_devolucao_invalido) */
+        /** Devolução com o código que o restaurante gerou no painel. 422 codigo_devolucao_invalido traz detalhes.tentativasRestantes; na 5ª tentativa errada o código é descartado, abre ocorrência e responde 422 codigo_devolucao_bloqueado (até o restaurante gerar outro); 422 codigo_devolucao_nao_gerado sem código */
         post: operations["entregas.confirmarDevolucaoPorCodigo"];
         delete?: never;
         options?: never;
@@ -1587,6 +1605,23 @@ export interface paths {
         put?: never;
         /** Registra o que o cliente pagou (misto em várias partes). Diferente do previsto: divergente e ocorrência */
         post: operations["recebimentos.registrar"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/app/entregas/{id}/recebimentos/corrigir": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Corrige o recebimento já registrado enquanto a parada está na porta (até 2 vezes): estorna o anterior, grava o novo e abre uma ocorrência recebimento_divergente com o antes e o depois para a central conferir (as abertas continuam abertas). 422 recebimento_nao_registrado; 422 limite_de_correcoes na 3ª; 409 parada_concluida se o Entregar ou outra correção chegou antes */
+        post: operations["recebimentos.corrigir"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1844,7 +1879,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Ajuste manual do motoboy (crédito ou débito) com motivo; entra no próximo fechamento */
+        /** Ajuste manual do motoboy (crédito ou débito) com motivo; entra no próximo fechamento. Competência até o último dia do mês seguinte (422 competencia_fora_do_limite) */
         post: operations["lancamentos.ajustar"];
         delete?: never;
         options?: never;
@@ -1861,7 +1896,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Estorno: lançamento novo de valor oposto; o original não muda (um estorno por lançamento) */
+        /** Estorno: lançamento novo de valor oposto; o original não muda (um estorno por lançamento). Original em aberto: mesma competência; já fechado ou faturado: hoje */
         post: operations["lancamentos.estornar"];
         delete?: never;
         options?: never;
@@ -1929,8 +1964,25 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Confere o que o motoboy entregou; diferença vira divergência e, se pedido, desconto do motoboy */
+        /** Confere o que o motoboy entregou à central; diferença vira divergência e, se pedido, desconto do motoboy. Acerto do restaurante: 403 acerto_do_restaurante */
         post: operations["caixa.conferir"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/caixa/acertos/{id}/descontar": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Lança a falta (diferença negativa) de um acerto do restaurante com divergência como desconto do motoboy. 422 sem_falta; 409 desconto_ja_lancado */
+        post: operations["caixa.descontar"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1980,7 +2032,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Gera o fechamento do período por motoboy (componentes de período e lançamentos abertos até o fim) */
+        /** Gera o fechamento do período por motoboy (componentes de período e lançamentos abertos até o fim). Fim depois de hoje: 422 periodo_no_futuro */
         post: operations["fechamentos.gerar"];
         delete?: never;
         options?: never;
@@ -2116,7 +2168,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Gera a fatura do período por parceria (mensalidade, cobrança aberta até o fim, dinheiro retido) */
+        /** Gera a fatura do período por parceria (mensalidade, cobrança aberta até o fim, dinheiro retido). Fim depois de hoje: 422 periodo_no_futuro */
         post: operations["faturas.gerar"];
         delete?: never;
         options?: never;
@@ -3793,6 +3845,8 @@ export interface operations {
                             } | null;
                             /** @enum {string} */
                             status: "pendente" | "ativa" | "rejeitada" | "suspensa";
+                            /** @description Restaurante dono, quando a empresa é a frota própria dele (só atende esse restaurante) */
+                            frotaPropriaDe: string | null;
                             aprovadaEm: string | null;
                             /** Format: date-time */
                             criadaEm: string;
@@ -3897,6 +3951,8 @@ export interface operations {
                             } | null;
                             /** @enum {string} */
                             status: "pendente" | "ativa" | "rejeitada" | "suspensa";
+                            /** @description Restaurante dono, quando a empresa é a frota própria dele (só atende esse restaurante) */
+                            frotaPropriaDe: string | null;
                             aprovadaEm: string | null;
                             /** Format: date-time */
                             criadaEm: string;
@@ -4109,6 +4165,149 @@ export interface operations {
             };
         };
     };
+    "organizacao.frotaPropria": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Sucesso */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        dados: {
+                            ativa: boolean;
+                            empresa: {
+                                /** Format: uuid */
+                                id: string;
+                                nome: string;
+                            } | null;
+                            parceria: {
+                                /** Format: uuid */
+                                id: string;
+                                status: string;
+                            } | null;
+                        };
+                    };
+                };
+            };
+            /** @description Sem sessão, credenciais erradas ou token vencido (token_expirado) */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+            /** @description Sem permissão (sem_permissao, csrf_invalido, sem_organizacao_ativa) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+            /** @description Erro interno; o detalhe fica no log com o requestId */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+        };
+    };
+    "organizacao.ativarFrotaPropria": {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Chave única por ação (8 a 100 caracteres). Repetir com o mesmo corpo devolve a mesma resposta. */
+                "Idempotency-Key": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Sucesso */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        dados: {
+                            ativa: boolean;
+                            empresa: {
+                                /** Format: uuid */
+                                id: string;
+                                nome: string;
+                            } | null;
+                            parceria: {
+                                /** Format: uuid */
+                                id: string;
+                                status: string;
+                            } | null;
+                        };
+                    };
+                };
+            };
+            /** @description Sem sessão, credenciais erradas ou token vencido (token_expirado) */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+            /** @description Sem permissão (sem_permissao, csrf_invalido, sem_organizacao_ativa) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+            /** @description Estado alterado por outra requisição */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+            /** @description Regra de negócio recusou (regra_violada e códigos específicos) */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+            /** @description Erro interno; o detalhe fica no log com o requestId */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+        };
+    };
     "plataforma.organizacoes.listar": {
         parameters: {
             query?: {
@@ -4157,6 +4356,8 @@ export interface operations {
                             } | null;
                             /** @enum {string} */
                             status: "pendente" | "ativa" | "rejeitada" | "suspensa";
+                            /** @description Restaurante dono, quando a empresa é a frota própria dele (só atende esse restaurante) */
+                            frotaPropriaDe: string | null;
                             aprovadaEm: string | null;
                             /** Format: date-time */
                             criadaEm: string;
@@ -4304,6 +4505,8 @@ export interface operations {
                             } | null;
                             /** @enum {string} */
                             status: "pendente" | "ativa" | "rejeitada" | "suspensa";
+                            /** @description Restaurante dono, quando a empresa é a frota própria dele (só atende esse restaurante) */
+                            frotaPropriaDe: string | null;
                             aprovadaEm: string | null;
                             /** Format: date-time */
                             criadaEm: string;
@@ -4411,6 +4614,8 @@ export interface operations {
                             } | null;
                             /** @enum {string} */
                             status: "pendente" | "ativa" | "rejeitada" | "suspensa";
+                            /** @description Restaurante dono, quando a empresa é a frota própria dele (só atende esse restaurante) */
+                            frotaPropriaDe: string | null;
                             aprovadaEm: string | null;
                             /** Format: date-time */
                             criadaEm: string;
@@ -4527,6 +4732,8 @@ export interface operations {
                             } | null;
                             /** @enum {string} */
                             status: "pendente" | "ativa" | "rejeitada" | "suspensa";
+                            /** @description Restaurante dono, quando a empresa é a frota própria dele (só atende esse restaurante) */
+                            frotaPropriaDe: string | null;
                             aprovadaEm: string | null;
                             /** Format: date-time */
                             criadaEm: string;
@@ -4643,6 +4850,8 @@ export interface operations {
                             } | null;
                             /** @enum {string} */
                             status: "pendente" | "ativa" | "rejeitada" | "suspensa";
+                            /** @description Restaurante dono, quando a empresa é a frota própria dele (só atende esse restaurante) */
+                            frotaPropriaDe: string | null;
                             aprovadaEm: string | null;
                             /** Format: date-time */
                             criadaEm: string;
@@ -4759,6 +4968,8 @@ export interface operations {
                             } | null;
                             /** @enum {string} */
                             status: "pendente" | "ativa" | "rejeitada" | "suspensa";
+                            /** @description Restaurante dono, quando a empresa é a frota própria dele (só atende esse restaurante) */
+                            frotaPropriaDe: string | null;
                             aprovadaEm: string | null;
                             /** Format: date-time */
                             criadaEm: string;
@@ -4860,6 +5071,17 @@ export interface operations {
                             requestId: string | null;
                             /** Format: date-time */
                             criadoEm: string;
+                            usuario: {
+                                /** Format: uuid */
+                                id: string;
+                                nome: string;
+                                email: string;
+                            } | null;
+                            organizacao: {
+                                /** Format: uuid */
+                                id: string;
+                                nome: string;
+                            } | null;
                         }[];
                         meta: {
                             /** @description Repasse em ?cursor= para a próxima página */
@@ -12254,6 +12476,23 @@ export interface operations {
                                     lng: number;
                                 } | null;
                             }[];
+                            motoboy: {
+                                /** Format: uuid */
+                                id: string;
+                                nome: string;
+                                apelido: string | null;
+                            } | null;
+                            tentativas: {
+                                /** Format: uuid */
+                                motoboyId: string;
+                                nome: string;
+                                apelido: string | null;
+                                /** @enum {string} */
+                                status: "recusada" | "expirada";
+                                motivo: string | null;
+                                /** Format: date-time */
+                                em: string;
+                            }[];
                         };
                     };
                 };
@@ -12972,7 +13211,7 @@ export interface operations {
                                     expiraEm: string;
                                 } | null;
                                 /** @description Botões da parada; cada um é a rota POST /app/entregas/{id}/<ação> */
-                                acoesPermitidas: ("iniciar" | "cheguei" | "contato" | "recebimentos" | "comprovantes" | "ausente" | "recusada_pelo_cliente" | "entregar" | "devolver")[];
+                                acoesPermitidas: ("iniciar" | "cheguei" | "contato" | "recebimentos" | "corrigir_recebimento" | "comprovantes" | "ausente" | "recusada_pelo_cliente" | "entregar" | "devolver")[];
                             }[];
                         };
                     };
@@ -13149,7 +13388,7 @@ export interface operations {
                                     expiraEm: string;
                                 } | null;
                                 /** @description Botões da parada; cada um é a rota POST /app/entregas/{id}/<ação> */
-                                acoesPermitidas: ("iniciar" | "cheguei" | "contato" | "recebimentos" | "comprovantes" | "ausente" | "recusada_pelo_cliente" | "entregar" | "devolver")[];
+                                acoesPermitidas: ("iniciar" | "cheguei" | "contato" | "recebimentos" | "corrigir_recebimento" | "comprovantes" | "ausente" | "recusada_pelo_cliente" | "entregar" | "devolver")[];
                             }[];
                         };
                     };
@@ -13323,7 +13562,7 @@ export interface operations {
                                     expiraEm: string;
                                 } | null;
                                 /** @description Botões da parada; cada um é a rota POST /app/entregas/{id}/<ação> */
-                                acoesPermitidas: ("iniciar" | "cheguei" | "contato" | "recebimentos" | "comprovantes" | "ausente" | "recusada_pelo_cliente" | "entregar" | "devolver")[];
+                                acoesPermitidas: ("iniciar" | "cheguei" | "contato" | "recebimentos" | "corrigir_recebimento" | "comprovantes" | "ausente" | "recusada_pelo_cliente" | "entregar" | "devolver")[];
                             }[];
                         };
                     };
@@ -13502,7 +13741,7 @@ export interface operations {
                                     expiraEm: string;
                                 } | null;
                                 /** @description Botões da parada; cada um é a rota POST /app/entregas/{id}/<ação> */
-                                acoesPermitidas: ("iniciar" | "cheguei" | "contato" | "recebimentos" | "comprovantes" | "ausente" | "recusada_pelo_cliente" | "entregar" | "devolver")[];
+                                acoesPermitidas: ("iniciar" | "cheguei" | "contato" | "recebimentos" | "corrigir_recebimento" | "comprovantes" | "ausente" | "recusada_pelo_cliente" | "entregar" | "devolver")[];
                             }[];
                         };
                     };
@@ -13681,7 +13920,7 @@ export interface operations {
                                     expiraEm: string;
                                 } | null;
                                 /** @description Botões da parada; cada um é a rota POST /app/entregas/{id}/<ação> */
-                                acoesPermitidas: ("iniciar" | "cheguei" | "contato" | "recebimentos" | "comprovantes" | "ausente" | "recusada_pelo_cliente" | "entregar" | "devolver")[];
+                                acoesPermitidas: ("iniciar" | "cheguei" | "contato" | "recebimentos" | "corrigir_recebimento" | "comprovantes" | "ausente" | "recusada_pelo_cliente" | "entregar" | "devolver")[];
                             }[];
                         };
                     };
@@ -13860,7 +14099,7 @@ export interface operations {
                                     expiraEm: string;
                                 } | null;
                                 /** @description Botões da parada; cada um é a rota POST /app/entregas/{id}/<ação> */
-                                acoesPermitidas: ("iniciar" | "cheguei" | "contato" | "recebimentos" | "comprovantes" | "ausente" | "recusada_pelo_cliente" | "entregar" | "devolver")[];
+                                acoesPermitidas: ("iniciar" | "cheguei" | "contato" | "recebimentos" | "corrigir_recebimento" | "comprovantes" | "ausente" | "recusada_pelo_cliente" | "entregar" | "devolver")[];
                             }[];
                         };
                     };
@@ -14162,7 +14401,7 @@ export interface operations {
                                     expiraEm: string;
                                 } | null;
                                 /** @description Botões da parada; cada um é a rota POST /app/entregas/{id}/<ação> */
-                                acoesPermitidas: ("iniciar" | "cheguei" | "contato" | "recebimentos" | "comprovantes" | "ausente" | "recusada_pelo_cliente" | "entregar" | "devolver")[];
+                                acoesPermitidas: ("iniciar" | "cheguei" | "contato" | "recebimentos" | "corrigir_recebimento" | "comprovantes" | "ausente" | "recusada_pelo_cliente" | "entregar" | "devolver")[];
                             }[];
                         };
                     };
@@ -14342,7 +14581,7 @@ export interface operations {
                                     expiraEm: string;
                                 } | null;
                                 /** @description Botões da parada; cada um é a rota POST /app/entregas/{id}/<ação> */
-                                acoesPermitidas: ("iniciar" | "cheguei" | "contato" | "recebimentos" | "comprovantes" | "ausente" | "recusada_pelo_cliente" | "entregar" | "devolver")[];
+                                acoesPermitidas: ("iniciar" | "cheguei" | "contato" | "recebimentos" | "corrigir_recebimento" | "comprovantes" | "ausente" | "recusada_pelo_cliente" | "entregar" | "devolver")[];
                             }[];
                         };
                     };
@@ -14527,7 +14766,7 @@ export interface operations {
                                     expiraEm: string;
                                 } | null;
                                 /** @description Botões da parada; cada um é a rota POST /app/entregas/{id}/<ação> */
-                                acoesPermitidas: ("iniciar" | "cheguei" | "contato" | "recebimentos" | "comprovantes" | "ausente" | "recusada_pelo_cliente" | "entregar" | "devolver")[];
+                                acoesPermitidas: ("iniciar" | "cheguei" | "contato" | "recebimentos" | "corrigir_recebimento" | "comprovantes" | "ausente" | "recusada_pelo_cliente" | "entregar" | "devolver")[];
                             }[];
                         };
                     };
@@ -14707,7 +14946,7 @@ export interface operations {
                                     expiraEm: string;
                                 } | null;
                                 /** @description Botões da parada; cada um é a rota POST /app/entregas/{id}/<ação> */
-                                acoesPermitidas: ("iniciar" | "cheguei" | "contato" | "recebimentos" | "comprovantes" | "ausente" | "recusada_pelo_cliente" | "entregar" | "devolver")[];
+                                acoesPermitidas: ("iniciar" | "cheguei" | "contato" | "recebimentos" | "corrigir_recebimento" | "comprovantes" | "ausente" | "recusada_pelo_cliente" | "entregar" | "devolver")[];
                             }[];
                         };
                     };
@@ -14788,6 +15027,139 @@ export interface operations {
         };
     };
     "recebimentos.registrar": {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Chave única por ação (8 a 100 caracteres). Repetir com o mesmo corpo devolve a mesma resposta. */
+                "Idempotency-Key": string;
+                /** @description Versão do app (x.y.z). Abaixo da mínima, 426 app_desatualizado com detalhes.versaoMinima. */
+                "X-App-Version"?: string;
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    itens: {
+                        /** @enum {string} */
+                        forma: "dinheiro" | "cartao_credito" | "cartao_debito" | "pix" | "outro";
+                        valor: string;
+                        trocoDado?: string;
+                        nsu?: string;
+                    }[];
+                    /** Format: date-time */
+                    eventoEm?: string;
+                    posicao?: {
+                        lat: number;
+                        lng: number;
+                    };
+                };
+            };
+        };
+        responses: {
+            /** @description Sucesso */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        dados: {
+                            /** Format: uuid */
+                            entregaId: string;
+                            /** @enum {string} */
+                            recebimentoStatus: "recebido" | "divergente";
+                            total: string;
+                            divergencias: ("valor" | "forma")[];
+                            itens: {
+                                /** @enum {string} */
+                                forma: "dinheiro" | "cartao_credito" | "cartao_debito" | "pix" | "outro";
+                                valor: string;
+                                trocoDado: string;
+                                nsu: string | null;
+                            }[];
+                        };
+                    };
+                };
+            };
+            /** @description Dados inválidos (validacao, json_invalido) */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+            /** @description Sem sessão, credenciais erradas ou token vencido (token_expirado) */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+            /** @description Sem permissão (sem_permissao, csrf_invalido, sem_organizacao_ativa) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+            /** @description Não encontrado, ou de outra organização */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+            /** @description Estado alterado por outra requisição */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+            /** @description Regra de negócio recusou (regra_violada e códigos específicos) */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+            /** @description X-App-Version abaixo da mínima */
+            426: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+            /** @description Erro interno; o detalhe fica no log com o requestId */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+        };
+    };
+    "recebimentos.corrigir": {
         parameters: {
             query?: never;
             header: {
@@ -16816,6 +17188,15 @@ export interface operations {
                     "application/json": components["schemas"]["Erro"];
                 };
             };
+            /** @description Regra de negócio recusou (regra_violada e códigos específicos) */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
             /** @description Erro interno; o detalhe fica no log com o requestId */
             500: {
                 headers: {
@@ -17020,6 +17401,11 @@ export interface operations {
                                 observacao: string | null;
                                 /** Format: date */
                                 competencia: string;
+                                motoboy: {
+                                    nome: string;
+                                    apelido: string | null;
+                                };
+                                acoesPermitidas: ("conferir" | "confirmar" | "descontar")[];
                             }[];
                         };
                     };
@@ -17109,6 +17495,11 @@ export interface operations {
                             observacao: string | null;
                             /** Format: date */
                             competencia: string;
+                            motoboy: {
+                                nome: string;
+                                apelido: string | null;
+                            };
+                            acoesPermitidas: ("conferir" | "confirmar" | "descontar")[];
                         }[];
                     };
                 };
@@ -17188,6 +17579,11 @@ export interface operations {
                             observacao: string | null;
                             /** Format: date */
                             competencia: string;
+                            motoboy: {
+                                nome: string;
+                                apelido: string | null;
+                            };
+                            acoesPermitidas: ("conferir" | "confirmar" | "descontar")[];
                         }[];
                     };
                 };
@@ -17279,6 +17675,11 @@ export interface operations {
                             observacao: string | null;
                             /** Format: date */
                             competencia: string;
+                            motoboy: {
+                                nome: string;
+                                apelido: string | null;
+                            };
+                            acoesPermitidas: ("conferir" | "confirmar" | "descontar")[];
                         };
                     };
                 };
@@ -17321,6 +17722,126 @@ export interface operations {
             };
             /** @description Estado alterado por outra requisição */
             409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+            /** @description Erro interno; o detalhe fica no log com o requestId */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+        };
+    };
+    "caixa.descontar": {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Chave única por ação (8 a 100 caracteres). Repetir com o mesmo corpo devolve a mesma resposta. */
+                "Idempotency-Key": string;
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    observacao?: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Sucesso */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        dados: {
+                            /** Format: uuid */
+                            id: string;
+                            /** Format: uuid */
+                            turnoId: string;
+                            /** Format: uuid */
+                            motoboyId: string;
+                            /** @enum {string} */
+                            destino: "restaurante" | "empresa";
+                            restauranteId: string | null;
+                            valorPrevisto: string;
+                            valorEntregue: string | null;
+                            diferenca: string | null;
+                            /** @enum {string} */
+                            status: "pendente" | "conferido" | "com_divergencia" | "confirmado_restaurante";
+                            conferidoEm: string | null;
+                            observacao: string | null;
+                            /** Format: date */
+                            competencia: string;
+                            motoboy: {
+                                nome: string;
+                                apelido: string | null;
+                            };
+                            acoesPermitidas: ("conferir" | "confirmar" | "descontar")[];
+                        };
+                    };
+                };
+            };
+            /** @description Dados inválidos (validacao, json_invalido) */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+            /** @description Sem sessão, credenciais erradas ou token vencido (token_expirado) */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+            /** @description Sem permissão (sem_permissao, csrf_invalido, sem_organizacao_ativa) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+            /** @description Não encontrado, ou de outra organização */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+            /** @description Estado alterado por outra requisição */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+            /** @description Regra de negócio recusou (regra_violada e códigos específicos) */
+            422: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -17386,6 +17907,11 @@ export interface operations {
                             observacao: string | null;
                             /** Format: date */
                             competencia: string;
+                            motoboy: {
+                                nome: string;
+                                apelido: string | null;
+                            };
+                            acoesPermitidas: ("conferir" | "confirmar" | "descontar")[];
                         };
                     };
                 };
@@ -17611,6 +18137,15 @@ export interface operations {
             };
             /** @description Sem permissão (sem_permissao, csrf_invalido, sem_organizacao_ativa) */
             403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+            /** @description Regra de negócio recusou (regra_violada e códigos específicos) */
+            422: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -18457,6 +18992,15 @@ export interface operations {
             };
             /** @description Sem permissão (sem_permissao, csrf_invalido, sem_organizacao_ativa) */
             403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+            /** @description Regra de negócio recusou (regra_violada e códigos específicos) */
+            422: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -21901,7 +22445,7 @@ export interface operations {
                                         expiraEm: string;
                                     } | null;
                                     /** @description Botões da parada; cada um é a rota POST /app/entregas/{id}/<ação> */
-                                    acoesPermitidas: ("iniciar" | "cheguei" | "contato" | "recebimentos" | "comprovantes" | "ausente" | "recusada_pelo_cliente" | "entregar" | "devolver")[];
+                                    acoesPermitidas: ("iniciar" | "cheguei" | "contato" | "recebimentos" | "corrigir_recebimento" | "comprovantes" | "ausente" | "recusada_pelo_cliente" | "entregar" | "devolver")[];
                                 }[];
                             } | null;
                             caixa: null;

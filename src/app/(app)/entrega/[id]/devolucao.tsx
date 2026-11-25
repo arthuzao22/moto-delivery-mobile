@@ -3,6 +3,8 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useState, type ReactNode } from 'react';
 import { ScrollView, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { ehErroDaApi } from '@/api/erro-da-api';
+import { mensagemDaDevolucao } from '@/api/mensagens-de-erro';
 import { useAcoesDaRota } from '@/api/rota';
 import { BarraDeAcao } from '@/components/app/barra-de-acao';
 import { ErroDaAcao } from '@/components/app/rota/acoes-comuns';
@@ -17,7 +19,8 @@ const AMPLIACAO_MAXIMA = 1.3;
 
 /**
  * Devolução no restaurante (documento 04 M5): o restaurante dita o código de 6 dígitos. O código
- * errado avisa sem apagar o que foi digitado.
+ * errado avisa quantas tentativas restam sem apagar o que foi digitado; bloqueado (5 erros), limpa
+ * o campo para o código novo que o restaurante gerar.
  */
 export default function Devolucao(): ReactNode {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -35,7 +38,10 @@ export default function Devolucao(): ReactNode {
           void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
           router.back();
         },
-        onError: () => void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning),
+        onError: (erro) => {
+          if (ehErroDaApi(erro) && erro.codigo === 'codigo_devolucao_bloqueado') setCodigo('');
+          void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+        },
       },
     );
   };
@@ -74,7 +80,7 @@ export default function Devolucao(): ReactNode {
         </View>
       </ScrollView>
       <BarraDeAcao>
-        <ErroDaAcao erro={devolver.error} />
+        <ErroDaDevolucao erro={devolver.error} />
         <Button disabled={!completo || devolver.isPending} onPress={enviar}>
           <Text>{devolver.isPending ? 'Conferindo…' : 'Confirmar devolução'}</Text>
         </Button>
@@ -82,6 +88,18 @@ export default function Devolucao(): ReactNode {
           <Text>Voltar</Text>
         </Button>
       </BarraDeAcao>
+    </View>
+  );
+}
+
+/** O erro com as tentativas que restam; os demais seguem o texto comum pelo `codigo`. */
+function ErroDaDevolucao({ erro }: { readonly erro: unknown }): ReactNode {
+  if (!ehErroDaApi(erro)) return <ErroDaAcao erro={erro} />;
+  return (
+    <View accessibilityLiveRegion="polite" className="rounded-2xl border border-destructive p-4">
+      <Text className="text-destructive">
+        {mensagemDaDevolucao(erro.codigo, erro.detalhes, erro.message)}
+      </Text>
     </View>
   );
 }
