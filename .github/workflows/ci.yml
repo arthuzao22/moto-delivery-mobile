@@ -1,0 +1,44 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+# O token do GitHub só lê o repositório: nenhum job publica, comenta ou escreve.
+permissions:
+  contents: read
+
+jobs:
+  verificar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm run lint
+      # src/api/schema.d.ts vem versionado: o contrato da API não existe neste checkout. Quem o
+      # atualiza é `npm run gerar:api`, local, depois de `npm run openapi` na API.
+      - run: npm run typecheck
+      - run: npx prettier --check .
+      - run: npm test
+      # Bloqueia PR (do Dependabot, por exemplo) que tira pacote da versão do SDK. O expo-doctor não
+      # está no package.json, então `npm run doctor` não acha o binário: vai por npx, na versão da
+      # dist-tag `sdk-57` do npm (trocar junto com o SDK). Consulta a API da Expo (precisa de rede).
+      - name: Pacotes nas versões do Expo SDK
+        run: npx expo-doctor@1.20.5
+
+  # Job separado: uma vulnerabilidade nova não esconde o resultado das outras verificações.
+  # O npm audit só lê o package-lock.json (sem npm ci, por isso sem cache no setup-node).
+  auditoria:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Dependências de produção sem vulnerabilidade alta ou crítica
+        run: npm audit --omit=dev --audit-level=high

@@ -1,0 +1,54 @@
+# Atualizações de dependências do app (mesma política da API: Documentação Técnica da API,
+# seção 11). Toda versão nova espera 14 dias antes de virar PR (cooldown): o mesmo critério usado
+# à mão para escolher versões.
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: '06:00'
+      timezone: America/Sao_Paulo
+    cooldown:
+      default-days: 14
+    open-pull-requests-limit: 5
+    groups:
+      desenvolvimento:
+        dependency-type: development
+        update-types: [minor, patch]
+      producao:
+        dependency-type: production
+        update-types: [patch]
+    ignore:
+      # Versões fixadas pelo Expo SDK: sobem juntas por `npx expo install expo@<sdk> --fix`.
+      # Inclui security updates: alerta nestes pacotes se resolve com `npx expo install --fix` ou novo SDK.
+      - dependency-name: expo
+        update-types: [version-update:semver-minor, version-update:semver-major]
+      - dependency-name: expo-*
+        update-types: [version-update:semver-minor, version-update:semver-major]
+      - dependency-name: react-native-*
+        update-types: [version-update:semver-minor, version-update:semver-major]
+      - dependency-name: '@types/react'
+        update-types: [version-update:semver-minor, version-update:semver-major]
+      - dependency-name: babel-preset-expo
+        update-types: [version-update:semver-minor, version-update:semver-major]
+      # Versão exata no SDK (nem patch passa no expo-doctor): só pelo `npx expo install --fix`.
+      - dependency-name: react
+      - dependency-name: react-dom
+      - dependency-name: react-native
+      - dependency-name: react-native-reanimated
+      - dependency-name: react-native-svg
+      - dependency-name: react-native-worklets
+      - dependency-name: '@react-native-async-storage/async-storage'
+    commit-message:
+      prefix: chore
+      include: scope
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly
+    cooldown:
+      default-days: 14
+    commit-message:
+      prefix: ci

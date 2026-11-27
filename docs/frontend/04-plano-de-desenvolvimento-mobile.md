@@ -27,7 +27,7 @@ Os documentos 01 a 03 desta pasta dizem **como** o app se parece e se comporta: 
 
 ## 2. Regras de integração (valem para todas as fases)
 
-1. **Tipos gerados.** `npm run gerar:api` = `openapi-typescript ../moto-delivery-api/contrato/openapi.json -o src/api/schema.d.ts`. O CI falha se o arquivo mudar.
+1. **Tipos gerados.** `npm run gerar:api` = `openapi-typescript ../moto-delivery-api/contrato/openapi.json -o src/api/schema.d.ts`. O arquivo vai versionado e o CI não o regenera, porque o contrato fica no repositório da API: depois de `npm run openapi` na API, rode `npm run gerar:api` aqui e commite o resultado.
 2. **Cliente único** (`src/api/cliente.ts`) com `openapi-fetch`:
    - `baseUrl` vem de `EXPO_PUBLIC_API_URL`, com `/api/v1` no fim;
    - middleware que coloca `Authorization: Bearer <access>`;
@@ -44,6 +44,7 @@ Os documentos 01 a 03 desta pasta dizem **como** o app se parece e se comporta: 
 7. **Botões pelo `acoesPermitidas`.** A barra de ações de cada parada mostra só o que a API permite. Por exemplo, "Entregar" não aparece antes do "Cheguei".
 8. **Dinheiro é texto.** `valor`, `trocoDado` e totais são strings decimais. O teclado de valor monta a string; o app não soma com `number`.
 9. **Navegação externa sem custo.** Waze (`https://waze.com/ul?q=<endereço>&navigate=yes`) e Google Maps abrem pelo endereço em texto, igual ao protótipo. Não é preciso coordenada da API.
+10. **Ponte do `decode-uri-component` (27/11/2026).** O `expo-router` 57 usa o `query-string` 7, que puxa o `decode-uri-component` 0.2.2, com duas vulnerabilidades altas de DoS por link malformado. A versão corrigida (0.5.1) só existe em ESM, e o `query-string` 7 faz `require()`. Por isso `vendor/decode-uri-component` reexporta a 0.5.1 em CommonJS, ligada por `overrides` no `package.json`. O teste `src/lib/__tests__/ponte-decode-uri.test.ts` falha se a ponte sumir. **Remover** quando `npm ls query-string` não mostrar mais a 7.x sob o `expo-router` (reavaliar na subida para o SDK 58): apagar `vendor/`, a entrada em `dependencies` e o `overrides`, rodar `npm install` e `npm audit --audit-level=high`. As builds do EAS usam o Node 22.12 (`eas.json`).
 
 ---
 

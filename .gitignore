@@ -42,3 +42,5 @@ yarn-error.*
 
 # ambiente local (o .env.example vai para o git)
 .env
+.env*
+!.env*.example
