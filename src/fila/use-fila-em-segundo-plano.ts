@@ -1,6 +1,8 @@
 import { useQueryClient } from '@tanstack/react-query';
 import { useEffect } from 'react';
+import { enviarPendentes } from '@/gps/envio';
 import { enviarFila, lerEstado, ouvirFila } from './envio-da-fila';
+import { enviarNaOrdem } from './ordem-de-envio';
 
 /**
  * A fila também é enviada sem ninguém esperando (sinal voltando, app abrindo). Quando ela anda
@@ -20,8 +22,8 @@ export function useFilaEmSegundoPlano(): void {
       anterior = atual;
       if (andou) void clienteDeConsultas.invalidateQueries({ queryKey: ['inicio'] });
     });
-    // Ao abrir o app logado, manda o que ficou na fila da última vez.
-    void enviarFila().catch(() => undefined);
+    // Ao abrir o app logado, manda o que ficou da última vez: GPS primeiro, depois as ações.
+    void enviarNaOrdem(enviarPendentes, enviarFila).catch(() => undefined);
     return pararDeOuvir;
   }, [clienteDeConsultas]);
 }

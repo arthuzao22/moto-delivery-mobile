@@ -3,7 +3,7 @@ import Constants, { ExecutionEnvironment } from 'expo-constants';
 import * as Location from 'expo-location';
 import * as TaskManager from 'expo-task-manager';
 import { Platform } from 'react-native';
-import { enviarPendentes, guardarPontos, limparFila } from './envio';
+import { enviarPendentes, guardarPontos } from './envio';
 import { pontoDe } from './fila-de-pontos';
 
 export const TAREFA_DO_GPS = 'gps-do-turno';
@@ -22,7 +22,11 @@ async function bateriaPct(): Promise<number | null> {
   return nivel < 0 ? null : Math.round(nivel * CEM);
 }
 
-/** Guarda os pontos e manda no máximo um lote a cada 15 s: o rádio do celular gasta bateria. */
+/**
+ * Guarda os pontos e manda no máximo um lote a cada 15 s: o rádio do celular gasta bateria.
+ * 'turno_fechado' quer dizer que nem os pontos mais novos cabem num turno (o turno acabou, talvez
+ * pela central): o GPS para. A fila já saiu inteira; nada válido é descartado.
+ */
 export async function receberPontos(locais: readonly Location.LocationObject[]): Promise<void> {
   const bateria = await bateriaPct();
   await guardarPontos(locais.map((local) => pontoDe(local, bateria)));
@@ -100,11 +104,15 @@ export async function iniciarRastreamento(): Promise<void> {
   });
 }
 
-/** Desliga o GPS e descarta os pontos que sobraram (o turno acabou; a API recusaria). */
+/**
+ * Desliga o GPS. Os pontos que sobraram ficam na fila: a API os associa ao turno do instante em
+ * que foram registrados, então o trajeto até o encerramento (inclusive offline) entra na trilha.
+ * Eles saem agora, se houver sinal, ou quando o sinal voltar.
+ */
 export async function pararRastreamento(): Promise<void> {
   assinaturaNoExpoGo?.remove();
   assinaturaNoExpoGo = null;
   const ligado = await Location.hasStartedLocationUpdatesAsync(TAREFA_DO_GPS).catch(() => false);
   if (ligado) await Location.stopLocationUpdatesAsync(TAREFA_DO_GPS);
-  await limparFila();
+  void enviarPendentes().catch(() => undefined);
 }

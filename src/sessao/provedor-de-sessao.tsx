@@ -3,6 +3,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useState, t
 import { api } from '@/api/cliente';
 import { dadosDe } from '@/api/executar';
 import { esvaziar as esvaziarFila } from '@/fila/armazem-da-fila';
+import { limparFila as limparFilaDoGps } from '@/gps/envio';
 import { pararRastreamento } from '@/gps/rastreamento';
 import {
   apagarSessao,
@@ -55,6 +56,7 @@ export function ProvedorDeSessao({ children }: { readonly children: ReactNode })
 
   const esquecer = useCallback(async () => {
     await pararRastreamento().catch(() => undefined);
+    await limparFilaDoGps().catch(() => undefined);
     await esvaziarFila().catch(() => undefined);
     await apagarSessao();
     clienteDeConsultas.clear();
