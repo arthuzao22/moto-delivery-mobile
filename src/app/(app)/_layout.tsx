@@ -1,6 +1,8 @@
 import { Stack } from 'expo-router';
 import type { ReactNode } from 'react';
 import { useInicio } from '@/api/turno';
+import { TelaDeLocalizacao } from '@/components/app/tela-de-localizacao';
+import { useLocalizacaoObrigatoria } from '@/gps/use-localizacao-obrigatoria';
 import { useFilaEmSegundoPlano } from '@/fila/use-fila-em-segundo-plano';
 import { useAberturaPeloPush } from '@/notificacoes/use-abertura-pelo-push';
 import { useTempoReal } from '@/tempo-real/use-tempo-real';
@@ -11,9 +13,14 @@ import { useTempoReal } from '@/tempo-real/use-tempo-real';
  */
 export default function LayoutDoApp(): ReactNode {
   const inicio = useInicio();
+  const localizacao = useLocalizacaoObrigatoria();
   useTempoReal(inicio.data?.turno?.status === 'aberto');
   useAberturaPeloPush();
   useFilaEmSegundoPlano();
+  // Sem localização ligada e permitida, nenhuma tela do app abre (a fila e o socket seguem acima).
+  if (localizacao.bloqueio) {
+    return <TelaDeLocalizacao bloqueio={localizacao.bloqueio} liberar={localizacao.liberar} />;
+  }
   return (
     <Stack screenOptions={{ headerShown: false }}>
       {/* As abas trocam sem animação, como numa barra de abas (documento 02 §1). */}
