@@ -36,6 +36,8 @@ function varianteAtual() {
 const IDENTIFICADOR = 'tec.zanart.motodelivery';
 const NOME = 'ZGo';
 const PRETO = '#0A0A0A';
+/** Projeto no EAS: identifica as builds e o endereço das atualizações pelo ar. */
+const PROJETO_EAS = '95136fd4-f517-4db2-94a6-f3fa78585879';
 
 /** @type {Readonly<Record<Variante, { id: string; nome: string }>>} */
 const SUFIXOS = {
@@ -81,6 +83,9 @@ module.exports = ({ config }) => {
     userInterfaceStyle: 'automatic',
     backgroundColor: PRETO,
     runtimeVersion: { policy: 'appVersion' },
+    // Atualização pelo ar (eas update): o build ouve o canal do perfil do eas.json. Só JS vai assim;
+    // mudança nativa ou de versão exige build nova.
+    updates: { url: `https://u.expo.dev/${PROJETO_EAS}` },
     ios: {
       bundleIdentifier: `${IDENTIFICADOR}${sufixo.id}`,
       supportsTablet: false,
@@ -123,6 +128,6 @@ module.exports = ({ config }) => {
     ],
     experiments: { typedRoutes: true },
     /** O EAS não grava em configuração dinâmica: o id do projeto fica aqui. */
-    extra: { variante, eas: { projectId: '95136fd4-f517-4db2-94a6-f3fa78585879' } },
+    extra: { variante, eas: { projectId: PROJETO_EAS } },
   };
 };
