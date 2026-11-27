@@ -1,5 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { api } from '@/api/cliente';
+import { comPrazo } from '@/fila/ordem-de-envio';
 import { acrescentar, esvaziar, semOEnviado, type Ponto, type ResultadoDoEnvio } from './fila-de-pontos';
 
 /**
@@ -62,9 +63,24 @@ function removerLote(lote: readonly Ponto[]): Promise<Ponto[]> {
   });
 }
 
+/**
+ * Prazo de um lote. O fetch do React Native (OkHttp/NSURLSession) não tem timeout próprio: com sinal
+ * fraco um POST ficaria pendurado e a fila inteira (e as ações atrás dela) parada. Estourou, conta
+ * como sem rede e o lote fica para a próxima rodada. `AbortSignal.timeout` não existe no polyfill de
+ * AbortController do RN 0.86, por isso AbortController + setTimeout; o `comPrazo` garante o prazo
+ * mesmo se o abort não chegar ao fetch (por exemplo, durante a renovação do token).
+ */
+const PRAZO_DO_LOTE_MS = 15_000;
+
 async function enviarLote(lote: readonly Ponto[]): Promise<number | null> {
-  const resposta = await api.POST('/app/localizacao', { body: { pontos: [...lote] } }).catch(() => null);
-  return resposta?.response.status ?? null;
+  const controle = new AbortController();
+  const envio = api.POST('/app/localizacao', { body: { pontos: [...lote] }, signal: controle.signal }).then(
+    (resposta) => resposta.response.status,
+    () => null,
+  );
+  const status = await comPrazo(envio, PRAZO_DO_LOTE_MS, null);
+  if (status === null) controle.abort();
+  return status;
 }
 
 let emAndamento: Promise<ResultadoDoEnvio> | null = null;

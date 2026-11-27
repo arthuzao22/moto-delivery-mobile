@@ -3,10 +3,12 @@ import {
   acrescentar,
   esvaziar,
   LIMITE_DA_FILA,
+  PRECISAO_MAXIMA_ACEITA_M,
   pontoDe,
   proximoLote,
   semOEnviado,
   TAMANHO_DO_LOTE,
+  VELOCIDADE_MAXIMA_MS,
   type Ponto,
 } from '../fila-de-pontos';
 
@@ -41,6 +43,24 @@ describe('fila de pontos', () => {
     expect(pontoDe({ ...local, coords: { ...local.coords, accuracy: null } }, null)).not.toHaveProperty(
       'precisaoM',
     );
+  });
+
+  it('velocidade acima do limite da API sai sem o campo; o ponto fica', () => {
+    const local = {
+      timestamp: 0,
+      coords: { latitude: -19.9, longitude: -43.9, accuracy: 5, speed: VELOCIDADE_MAXIMA_MS + 1 },
+    };
+    const convertido = pontoDe(local, null);
+    expect(convertido).not.toHaveProperty('velocidadeMs');
+    expect(convertido).toMatchObject({ lat: -19.9, precisaoM: 5 });
+    const noLimite = { ...local, coords: { ...local.coords, speed: VELOCIDADE_MAXIMA_MS } };
+    expect(pontoDe(noLimite, null)).toHaveProperty('velocidadeMs', VELOCIDADE_MAXIMA_MS);
+  });
+
+  it('ponto com precisão acima do limite da API é descartado ao entrar na fila', () => {
+    const ruim: Ponto = { ...ponto(1), precisaoM: PRECISAO_MAXIMA_ACEITA_M + 1 };
+    const noLimite: Ponto = { ...ponto(2), precisaoM: PRECISAO_MAXIMA_ACEITA_M };
+    expect(acrescentar([ponto(0)], [ruim, noLimite, ponto(3)])).toEqual([ponto(0), noLimite, ponto(3)]);
   });
 });
 
@@ -86,6 +106,16 @@ describe('envio da fila de pontos', () => {
     const fila = filaFalsa(pontos(150), (lote) => (lote[0]?.lat === 100 ? 422 : 201));
     expect(await esvaziar(fila.portas)).toBe('turno_fechado');
     expect(fila.guardada()).toEqual([]);
+  });
+
+  it('400 descarta só o lote inválido e segue, sem parar o GPS', async () => {
+    const fila = filaFalsa(pontos(250), (lote) => (lote[0]?.lat === 100 ? 400 : 201));
+    expect(await esvaziar(fila.portas)).toBe('enviado');
+    expect(fila.enviados.map((lote) => lote[0]?.lat)).toEqual([0, 100, 200]);
+    expect(fila.guardada()).toEqual([]);
+    const ultimoInvalido = filaFalsa(pontos(150), (lote) => (lote[0]?.lat === 100 ? 400 : 201));
+    expect(await esvaziar(ultimoInvalido.portas)).toBe('enviado');
+    expect(ultimoInvalido.guardada()).toEqual([]);
   });
 
   it('sem rede ou erro do servidor, para e mantém o lote', async () => {
