@@ -1,0 +1,11 @@
+{
+  "name": "decode-uri-component",
+  "version": "0.5.1-cjs.0",
+  "private": true,
+  "description": "Ponte CommonJS para decode-uri-component 0.5.1 (corrige GHSA-vcc3-ghjq-m6fr e GHSA-qr28-fpjm-wq7f). O query-string 7 do expo-router faz require() e chama o retorno; a 0.5.1 só tem export default em ESM. Remover quando `npm ls query-string` não mostrar mais a 7.x sob o expo-router (reavaliar obrigatoriamente na subida para o SDK 58): apagar vendor/, a entrada em dependencies e o overrides, rodar npm install e npm audit --audit-level=high.",
+  "license": "MIT",
+  "main": "index.js",
+  "dependencies": {
+    "decode-uri-component-esm": "npm:decode-uri-component@0.5.1"
+  }
+}
