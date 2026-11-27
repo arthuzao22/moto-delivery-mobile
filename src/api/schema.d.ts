@@ -170,6 +170,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/cep/{cep}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Endereço do CEP para preencher o formulário. 404 cep_nao_encontrado se não existe; 503 cep_indisponivel se os provedores não responderem */
+        get: operations["cep.consultar"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/equipe": {
         parameters: {
             query?: never;
@@ -2816,6 +2833,8 @@ export interface operations {
                             /** @enum {string} */
                             status: "ok" | "degradado";
                             banco: boolean;
+                            /** @description true pronto, false fora (não muda o status HTTP), null sem Redis configurado */
+                            redis: boolean | null;
                             versao: string;
                         };
                     };
@@ -3511,6 +3530,93 @@ export interface operations {
             };
             /** @description Erro interno; o detalhe fica no log com o requestId */
             500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+        };
+    };
+    "cep.consultar": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                cep: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Sucesso */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        dados: {
+                            /** @description 8 dígitos, sem hífen */
+                            cep: string;
+                            /** @description null em CEP geral de cidade */
+                            logradouro: string | null;
+                            /** @description null em CEP geral de cidade */
+                            bairro: string | null;
+                            cidade: string;
+                            uf: string;
+                        };
+                    };
+                };
+            };
+            /** @description Dados inválidos (validacao, json_invalido) */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+            /** @description Sem sessão, credenciais erradas ou token vencido (token_expirado) */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+            /** @description Não encontrado, ou de outra organização */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+            /** @description Muitas tentativas (limite_excedido, conta_bloqueada) */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+            /** @description Erro interno; o detalhe fica no log com o requestId */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Erro"];
+                };
+            };
+            /** @description Erro */
+            503: {
                 headers: {
                     [name: string]: unknown;
                 };

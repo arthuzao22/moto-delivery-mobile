@@ -13,15 +13,28 @@
 /** @type {readonly Variante[]} */
 const VARIANTES = ['development', 'preview', 'production'];
 
-/** @returns {Variante} */
+/**
+ * Fora do EAS (Metro e build local), sem `APP_VARIANT` é desenvolvimento. Dentro de um build EAS
+ * (`EAS_BUILD=true`), falha fechado: variante ausente ou desconhecida é erro, nunca development,
+ * que libera HTTP.
+ * @returns {Variante}
+ */
 function varianteAtual() {
   const valor = process.env.APP_VARIANT;
-  return VARIANTES.find((variante) => variante === valor) ?? 'development';
+  const variante = VARIANTES.find((item) => item === valor);
+  if (variante) return variante;
+  if (process.env.EAS_BUILD === 'true') {
+    throw new Error(
+      `APP_VARIANT ${valor ? `inválido ("${valor}")` : 'ausente'} no build EAS: defina development, preview ou production no perfil do eas.json.`,
+    );
+  }
+  if (valor) throw new Error(`APP_VARIANT inválido ("${valor}"): use development, preview ou production.`);
+  return 'development';
 }
 
 /** Não dá para trocar depois de publicar nas lojas (documento 05 §4.1). */
 const IDENTIFICADOR = 'tec.zanart.motodelivery';
-const NOME = 'Moto Delivery';
+const NOME = 'ZGo';
 const PRETO = '#0A0A0A';
 
 /** @type {Readonly<Record<Variante, { id: string; nome: string }>>} */

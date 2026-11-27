@@ -18,6 +18,7 @@ import { MetricasDoDia } from '@/components/app/inicio/metricas-do-dia';
 import { SituacaoDoTurno, type EstadoDoTurno } from '@/components/app/inicio/situacao-do-turno';
 import { TelaDaRota } from '@/components/app/rota/tela-da-rota';
 import { FaixaDoTopo } from '@/components/app/faixa-do-topo';
+import { NOME_DO_PRODUTO } from '@/lib/marca';
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
 import { iniciarRastreamento, segundoPlanoDisponivel, situacaoDaPermissao } from '@/gps/rastreamento';
@@ -55,7 +56,7 @@ export default function Inicio(): ReactNode {
   if (estado === 'em_rota' && rota !== null) {
     return (
       <TelaDeAba>
-        <FaixaDoTopo titulo="Moto Delivery" />
+        <FaixaDoTopo titulo={NOME_DO_PRODUTO} />
         <View className="px-4 pt-4 empty:hidden">
           <AvisoDeConflito />
         </View>
@@ -65,7 +66,7 @@ export default function Inicio(): ReactNode {
   }
   return (
     <TelaDeAba>
-      <FaixaDoTopo titulo="Moto Delivery" />
+      <FaixaDoTopo titulo={NOME_DO_PRODUTO} />
       <ScrollView contentContainerClassName="gap-4 px-4 py-6">
         <AvisoDeConflito />
         <CabecalhoDoDia />

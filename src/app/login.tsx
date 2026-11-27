@@ -6,6 +6,7 @@ import { FaixaDoTopo } from '@/components/app/faixa-do-topo';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Text } from '@/components/ui/text';
+import { DESENVOLVEDORA, NOME_DO_PRODUTO } from '@/lib/marca';
 import { useSessao } from '@/sessao/provedor-de-sessao';
 
 /**
@@ -38,7 +39,7 @@ export default function Login(): ReactNode {
       className="flex-1 bg-background"
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
-      <FaixaDoTopo titulo="Moto Delivery" />
+      <FaixaDoTopo titulo={NOME_DO_PRODUTO} />
       <ScrollView contentContainerClassName="gap-6 px-4 py-8" keyboardShouldPersistTaps="handled">
         <View className="gap-2">
           <Text variante="titulo">Entrar</Text>
@@ -71,6 +72,9 @@ export default function Login(): ReactNode {
             <Text className="text-destructive">{erro}</Text>
           </View>
         ) : null}
+        <Text variante="secundario" className="text-center text-xs">
+          {NOME_DO_PRODUTO} · Desenvolvido por {DESENVOLVEDORA}
+        </Text>
       </ScrollView>
       <BarraDeAcao>
         <Button disabled={!preenchido || enviando} onPress={() => void enviar()}>

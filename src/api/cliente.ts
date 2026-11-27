@@ -1,15 +1,22 @@
 import * as Application from 'expo-application';
+import Constants from 'expo-constants';
 import createClient, { type Middleware } from 'openapi-fetch';
 import { guardarTokens, lerTokens } from '@/sessao/armazem';
 import { avisarSessaoPerdida } from '@/sessao/aviso-de-sessao';
 import { criarFetchAutenticado } from '@/sessao/fetch-autenticado';
 import { Renovador } from '@/sessao/renovador';
 import { ehTokens } from '@/sessao/tokens';
-import { baseDaApi } from './configuracao';
+import { baseDaApi, varianteDoApp } from './configuracao';
 import type { paths } from './schema';
 
-/** Null quando falta `EXPO_PUBLIC_API_URL`: a tela inicial mostra como configurar. */
-export const BASE_DA_API = baseDaApi(process.env.EXPO_PUBLIC_API_URL);
+/**
+ * Null quando falta `EXPO_PUBLIC_API_URL` ou quando ela é `http://` fora do build de
+ * desenvolvimento: a tela inicial mostra como configurar.
+ */
+export const BASE_DA_API = baseDaApi(
+  process.env.EXPO_PUBLIC_API_URL,
+  varianteDoApp(Constants.expoConfig?.extra),
+);
 
 /**
  * A versão nativa da loja, não a do OTA: abaixo de `APP_VERSAO_MINIMA` a API responde 426
